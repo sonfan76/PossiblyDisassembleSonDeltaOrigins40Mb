@@ -7,7 +7,7 @@ and only the later beyond 32mbit 512kb banks are what are switched out
 (though the implementation details will have to be consulted for exact addresses)
 
 One way to handle this is possibly to simply not resolve into labels the memory loading here.
-Ex in the program it will right to the bank switcher register a value;
+Ex in the program it will wright to the bank switcher register a value;
 and then the upper 512kbit of memory will then essentially point to this later rom bank.
 If a dis-assembler simply didn't "resolve" these types of pointers there would be no issue.
 The write to the memory mapper register would occur:

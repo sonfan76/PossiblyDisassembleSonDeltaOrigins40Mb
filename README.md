@@ -10,6 +10,10 @@ Neto boasts that it is not possible to disassemble "his" Sonic 1/2/3&K hack, (th
 Is he right?
 Has the gauntlet been thrown down?
 
+Note:
+readable_memmaapper2.odt
+memmaapper2.txt 
+put forth a possible path forward.
 -----
 Technical Digest: Reversing the Sonic
 Delta Origins Bank-Switching Mapper

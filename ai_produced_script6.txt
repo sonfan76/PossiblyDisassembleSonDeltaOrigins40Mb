@@ -1,0 +1,47 @@
+# Sonic Sound Request & Audio Interrupt Pointer Locator
+# @category SonicHacking
+
+from ghidra.program.model.symbol import SourceType
+
+def locate_sound_engine():
+    program = getCurrentProgram()
+    mem = program.getMemory()
+    symbol_table = program.getSymbolTable()
+    
+    # Machine code patterns for writing commands to the Z80 Audio Bus
+    # Look for 'move.b d0, ($A11100)' or specialized audio queue movements
+    AUDIO_PATTERNS = {
+        "Sound_Command_Loop": "30 3c 01 00 13 fc 01 00 00 a1 11 00",
+        "S3K_PlaySound_Raw":  "10 3c 00 ff 11 c0"
+    }
+    
+    print("Scanning for Audio Driver and Music Request Intercept routines...")
+    
+    for name, pattern_str in AUDIO_PATTERNS.items():
+        pattern_bytes = [int(b, 16) for b in pattern_str.split(" ")]
+        mask = [0xFF] * len(pattern_bytes)
+        
+        # Call Ghidra's memory search API
+        from java.lang import Byte
+        j_bytes = [Byte(b).byteValue() for b in pattern_bytes]
+        j_mask = [Byte(m).byteValue() for m in mask]
+        
+        addr = mem.findBytes(toAddr(0x000000), j_bytes, j_mask, True, currentMonitor)
+        
+        if addr is not None:
+            # Check if it's already labeled, otherwise apply the tag
+            existing = symbol_table.getPrimarySymbol(addr)
+            if existing is None:
+                symbol_table.createLabel(addr, name, SourceType.USER_DEFINED)
+                print(" -> FOUND AUDIO CORE: Labeled '{}' at address 0x{}".format(name, addr))
+            else:
+                print(" -> FOUND AUDIO CORE: '{}' already at 0x{}".format(name, addr))
+                
+            # Print instructions to trace the code upstream
+            print("    [!] Check instructions directly AFTER 0x{}. Look for 'move.b #X, ($A130FX)'".format(addr))
+            print("    [!] This reveals which sound/DAC bank is swapped when music plays.")
+        else:
+            print(" -> Pattern '{}' not found in this segment.".format(name))
+
+# Execute the tracker
+locate_sound_engine()

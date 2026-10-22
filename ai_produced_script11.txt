@@ -1,0 +1,32 @@
+def extract_genesis_palette(rom_chunk_path, start_offset, num_colors=16):
+    """
+    Extracts raw 9-bit Mega Drive hardware palettes (encoded as 16-bit big-endian words)
+    and formats them cleanly into modern RGB system hex values.
+    """
+    extracted_palette = []
+    
+    with open(rom_chunk_path, "rb") as f:
+        # Seek straight to the offset flagged in your disassembler
+        f.seek(start_offset)
+        
+        for _ in range(num_colors):
+            color_bytes = f.read(2)
+            if len(color_bytes) < 2:
+                break
+                
+            # Combine bytes to recreate the big-endian 16-bit word
+            raw_val = (color_bytes[0] << 8) | color_bytes[1]
+            
+            # Extract individual color channels (values range from 0 to 7)
+            blue  = (raw_val & 0x0E00) >> 9
+            green = (raw_val & 0x00E0) >> 5
+            red   = (raw_val & 0x000E) >> 1
+            
+            # Scale the 0-7 Genesis steps up to standard 0-255 RGB channels
+            # Multiply by 36 maps out the steps uniformly (7 * 36 = 252 ~ #FC)
+            extracted_palette.append(f"#{red*36:02X}{green*36:02X}{blue*36:02X}")
+            
+    return extracted_palette
+
+# Example usage: Extracting Sonic's primary sprite palette from Bank 00
+# print(extract_genesis_palette("output/bank_00.bin", 0x002A40, 16))

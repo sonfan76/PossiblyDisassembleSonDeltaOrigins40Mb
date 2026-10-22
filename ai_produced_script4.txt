@@ -1,0 +1,77 @@
+# Automatic Engine Pattern Matcher for Sonic Delta / S3&K Hacks
+# @category SonicHacking
+
+from ghidra.program.model.symbol import SourceType
+
+# Common Motorola 68000 byte signatures from the Sonic engine framework
+SIGNATURES = {
+    # Kosinski Decompression algorithm setup signature
+    "Decomp_Kosinski": "48 e7 fe fe 20 50 22 51 43 f9 00 00 00 00 42 80 10 18",
+    
+    # Nemesis Graphics Decompression algorithm core loop
+    "Decomp_Nemesis": "48 e7 ff fe 45 e8 00 0c 24 5f 34 1a 0c 42 6d 73",
+    
+    # Sound Driver (Z80 bus request/reset initialization loop)
+    "Init_SoundDriver": "30 3c 01 00 13 fc 01 00 00 a1 11 00 13 fc 01 00 00 a1 12 00",
+    
+    # Standard S3&K Level Loading / Layout Initialization header handler
+    "Engine_LoadLevelLayout": "4e 56 00 00 48 e7 3c 7c 42 79 00 ff fe 00 30 39"
+}
+
+def scan_for_signatures():
+    program = getCurrentProgram()
+    memory = program.getMemory()
+    symbol_table = program.getSymbolTable()
+    
+    print("Beginning engine signature scan across available memory blocks...")
+    
+    for name, pattern_str in SIGNATURES.items():
+        # Convert hex string into a Ghidra-compatible byte pattern string
+        # Space-separated hex matches
+        pattern_bytes = pattern_str.split(" ")
+        
+        # Search the entire program space for this exact byte sequence
+        addr = None
+        count = 0
+        
+        while True:
+            # Look for the pattern starting from address 0x000000 or the last found address
+            start_addr = toAddr(0x000000) if addr is None else addr.add(1)
+            
+            # Find the bytes in memory
+            addr = find(start_addr, bytes([int(b, 16) for b in pattern_bytes]))
+            
+            if addr is None:
+                break
+                
+            # If found, check if a label already exists, if not, create it
+            existing_symbol = symbol_table.getPrimarySymbol(addr)
+            if existing_symbol is None:
+                symbol_table.createLabel(addr, name, SourceType.USER_DEFINED)
+                print(" -> MATCH FOUND: Labeled '{}' at address 0x{}".format(name, addr))
+            else:
+                print(" -> MATCH FOUND: '{}' found at 0x{} (Already labeled as {})".format(
+                    name, addr, existing_symbol.getName()
+                ))
+            
+            count += 1
+            
+        if count == 0:
+            print(" -> Signature '{}' not found in current mapped space. (Likely located in an unmapped bank)".format(name))
+
+# Help function to call the search API cleanly in Ghidra Python environment
+def find(start_addr, byte_array):
+    program = getCurrentProgram()
+    mem = program.getMemory()
+    # Mask out matches exactly (all 0xFF means strict match)
+    mask = bytes([0xFF] * len(byte_array))
+    
+    # Convert arrays to java signed byte arrays expected by Ghidra API
+    from java.lang import Byte
+    j_bytes = [Byte(b).byteValue() for b in byte_array]
+    j_mask = [Byte(m).byteValue() for m in mask]
+    
+    return mem.findBytes(start_addr, j_bytes, j_mask, True, currentMonitor)
+
+# Execute the engine scan
+scan_for_signatures()

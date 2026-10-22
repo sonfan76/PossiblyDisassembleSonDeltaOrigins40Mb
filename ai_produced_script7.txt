@@ -1,0 +1,43 @@
+# Sonic Level Layout Pointer Table Locator
+# @category SonicHacking
+
+from ghidra.program.model.symbol import SourceType
+
+def find_level_tables():
+    program = getCurrentProgram()
+    mem = program.getMemory()
+    symbol_table = program.getSymbolTable()
+    
+    # Machine code patterns for grabbing the Zone/Act ID and shifting it 
+    # to read a pointer array (lsl.w #2, d0 or similar array indexing)
+    LEVEL_INDEX_PATTERNS = {
+        "Engine_LoadLevelSetup": "10 39 00 ff fe 10 e4 40" # move.b (Current_Zone), d0 -> lsl.w #2, d0
+    }
+    
+    print("Scanning for Level Layout Table and Header Indexing routines...")
+    
+    for name, pattern_str in LEVEL_INDEX_PATTERNS.items():
+        pattern_bytes = [int(b, 16) for b in pattern_str.split(" ")]
+        mask = [0xFF] * len(pattern_bytes)
+        
+        from java.lang import Byte
+        j_bytes = [Byte(b).byteValue() for b in pattern_bytes]
+        j_mask = [Byte(m).byteValue() for m in mask]
+        
+        addr = mem.findBytes(toAddr(0x000000), j_bytes, j_mask, True, currentMonitor)
+        
+        if addr is not None:
+            existing = symbol_table.getPrimarySymbol(addr)
+            if existing is None:
+                symbol_table.createLabel(addr, name, SourceType.USER_DEFINED)
+                print(" -> FOUND LEVEL CORE: Labeled '{}' at address 0x{}".format(name, addr))
+            else:
+                print(" -> FOUND LEVEL CORE: '{}' already at 0x{}".format(name, addr))
+                
+            print("    [!] Go to this address and look for the 'lea' or 'move.l' table offset.")
+            print("    [!] The longword table it references is the master list of all game layouts.")
+        else:
+            print(" -> Pattern '{}' not found in this segment.".format(name))
+
+# Run the search
+find_level_tables()

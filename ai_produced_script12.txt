@@ -1,0 +1,50 @@
+import os
+import sys
+
+def verify_bank_boundaries(asset_dir="src/assets"):
+    """
+    Scans asset directories to ensure graphics, level grids, and audio chunks
+    do not overflow the hardware bank boundary constraints of the SSFII mapper.
+    """
+    MAX_BANK_SIZE = 0x80000  # Strict 512 KB Limit per segment
+    errors_detected = 0
+
+    print("=" * 65)
+    print("      UNIVERSAL FRAMEWORK: HARDWARE BOUNDARY VERIFICATION")
+    print("=" * 65)
+
+    if not os.path.exists(asset_dir):
+        print(f"[!] Warning: Asset staging directory '{asset_dir}' not found.")
+        print("    Ensure your asset folders are populated. Aborting scan.")
+        return
+
+    # Crawl through subdirectories checking all raw binaries (.bin, .kos, .pcm)
+    for root, _, files in os.walk(asset_dir):
+        for file in files:
+            if file.endswith(('.bin', '.kos', '.pcm', '.dat')):
+                file_path = os.path.join(root, file)
+                size_bytes = os.path.getsize(file_path)
+                
+                # Check file size parameters relative to physical banking limits
+                if size_bytes > MAX_BANK_SIZE:
+                    print(f"[CRITICAL ERROR] '{file}' is too large for a single bank!")
+                    print(f"                 Size: {size_bytes} / {MAX_BANK_SIZE} bytes.")
+                    print(f"                 Overflow by: {size_bytes - MAX_BANK_SIZE} bytes.")
+                    errors_detected += 1
+                else:
+                    percentage = (size_bytes / MAX_BANK_SIZE) * 100
+                    print(f"[OK] {file:<25} Size: {size_bytes:6d} bytes ({percentage:5.1f}% of Bank capacity)")
+
+    print("-" * 65)
+    if errors_detected > 0:
+        print(f"[!] Verification FAILED. {errors_detected} assets will cause compilation overflows.")
+        print("    Action required: Defragment or split the oversized files listed above.")
+        sys.exit(1)
+    else:
+        print("[+] Verification SUCCESS. All asset bounds conform to SSFII hardware specs.")
+        print("=" * 65)
+
+if __name__ == "__main__":
+    # Point this to your asset payload subfolder path
+    verify_bank_boundaries()
+    

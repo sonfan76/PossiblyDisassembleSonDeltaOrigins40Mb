@@ -1,0 +1,49 @@
+# Automatic S3&K / Sonic Delta RAM Variable Labeler
+# @category SonicHacking
+
+from ghidra.program.model.symbol import SourceType
+
+# Official S3&K/Sonic engine global RAM definitions
+RAM_VARIABLES = {
+    0xFFB000: "Player_1_Object_RAM",      # Core physics, position, and status data for Sonic/Tails/Knuckles
+    0xFFB040: "Player_2_Object_RAM",      # Object RAM for sidekick/companion character
+    
+    0xFFFE10: "Current_Zone_And_Act",     # 2 bytes: Zone ID (High Byte), Act ID (Low Byte)
+    0xFFFE12: "Current_Character_ID",     # 0 = Sonic, 1 = Tails, 2 = Knuckles
+    
+    0xFFFE20: "Ring_Count",               # 2 bytes: Number of rings currently held
+    0xFFFE22: "Timer_Minutes",            # 1 byte
+    0xFFFE23: "Timer_Seconds",            # 1 byte
+    0xFFFE24: "Timer_Frames",             # 1 byte (Runs at 60fps)
+    
+    0xFFFE2A: "Life_Count",               # 1 byte: Remaining lives
+    0xFFFE2C: "Score_Total",              # 4 bytes: Player's current overall score
+    
+    0xFFFFF0: "V_Blank_Timer",            # 4 bytes: Increments every single screen refresh frame
+    0xFFFFFFF0: "SSF2_Mapper_Mirror"      # Sign-extended shortcut address sometimes used to write to the bank mapper
+}
+
+def label_ram_variables():
+    program = getCurrentProgram()
+    symbol_table = program.getSymbolTable()
+    
+    print("Mapping documented Sonic engine RAM variables...")
+    
+    for addr_val, var_name in RAM_VARIABLES.items():
+        # Handle 24-bit vs 32-bit address spaces on M68k sign-extension
+        # Genesis often treats 0xFFXXXX as 0xFFFFFFXXXX in code execution loops
+        addr = toAddr(addr_val & 0xFFFFFFFF)
+        
+        try:
+            # Check if a label already exists
+            existing_symbol = symbol_table.getPrimarySymbol(addr)
+            if existing_symbol is None:
+                symbol_table.createLabel(addr, var_name, SourceType.USER_DEFINED)
+                print(" -> Labeled RAM variable: {} at 0x{:08X}".format(var_name, addr.getOffset()))
+            else:
+                print(" -> 0x{:08X} already labeled as {}".format(addr.getOffset(), existing_symbol.getName()))
+        except Exception as e:
+            print(" -> Failed to label address 0x{:08X}: {}".format(addr_val, str(e)))
+
+# Execute the RAM mapping
+label_ram_variables()

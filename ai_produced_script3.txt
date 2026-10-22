@@ -1,0 +1,33 @@
+import struct
+import os
+
+def extract_reset_vector(file_path):
+    if not os.path.exists(file_path):
+        print(f"Error: File '{file_path}' not found.")
+        return
+
+    with open(file_path, "rb") as f:
+        # Read the first 8 bytes of the ROM (two 32-bit big-endian long words)
+        header_data = f.read(8)
+        
+        if len(header_data) < 8:
+            print("Error: File is too small to contain a valid Genesis header.")
+            return
+            
+        # '>' means big-endian, 'I' means unsigned 32-bit integer
+        initial_sp, reset_vector = struct.unpack(">II", header_data)
+        
+        print("=" * 50)
+        print("           SEGA GENESIS VECTOR ENTRY INFO")
+        print("=" * 50)
+        print(f"Initial Stack Pointer (SP): 0x{initial_sp:08X}")
+        print(f"Reset Vector (Boot Address): 0x{reset_vector:08X}")
+        print("-" * 50)
+        print(f"-> In Ghidra, press 'G' and go directly to: 0x{reset_vector:X}")
+        print("=" * 50)
+
+# Run the script on Bank 00 or the main ROM
+# Replace with 'Sonic_Delta_Origins.md' if running on the full ROM
+TARGET_FILE = "extracted_banks/bank_00_[0x000000-0x07FFFF].bin"
+
+extract_reset_vector(TARGET_FILE)

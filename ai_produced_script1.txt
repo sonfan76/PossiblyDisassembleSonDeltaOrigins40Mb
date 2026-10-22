@@ -1,0 +1,74 @@
+# Automated Mapper Tracker for SSFII / Sonic Delta style bank-switching
+# @category SonicHacking
+
+from ghidra.program.model.symbol import SourceType
+from ghidra.util.task import TaskMonitor
+
+# Define the Sega/SSFII Hardware Mapper Registers (Motorola 68000 addresses)
+MAPPER_REGISTERS = {
+    0xA130F1: "SSF2_BANK_SLOT1_080000",
+    0xA130F3: "SSF2_BANK_SLOT2_100000",
+    0xA130F5: "SSF2_BANK_SLOT3_180000",
+    0xA130F7: "SSF2_BANK_SLOT4_200000",
+    0xA130F9: "SSF2_BANK_SLOT5_280000",
+    0xA130FB: "SSF2_BANK_SLOT6_300000",
+    0xA130FD: "SSF2_BANK_SLOT7_380000"
+}
+
+def analyze_mapper_writes():
+    program = getCurrentProgram()
+    listing = program.getListing()
+    
+    # Label the hardware registers first if they aren't already
+    symbol_table = program.getSymbolTable()
+    for addr_val, reg_name in MAPPER_REGISTERS.items():
+        addr = toAddr(addr_val)
+        if symbol_table.getPrimarySymbol(addr) is None:
+            symbol_table.createLabel(addr, reg_name, SourceType.USER_DEFINED)
+            print("Labeled hardware register: {} at {}".format(reg_name, addr))
+
+    # Loop through all instructions in the ROM
+    print("Scanning code for dynamic bank-switching triggers...")
+    instruction = listing.getInstructions(toAddr(0x000000), True)
+    
+    while instruction.hasNext() and not monitor.isCancelled():
+        ins = instruction.next()
+        mnemonic = ins.getMnemonicString()
+        
+        # We look for instructions moving data into memory (like 'move.b' or 'movei')
+        if "move" in mnemonic.lower():
+            num_operands = ins.getNumOperands()
+            for i in range(num_operands):
+                op_type = ins.getOperandType(i)
+                
+                # Check if the instruction targets our hardware registers
+                # Look for absolute addresses or references
+                op_address = ins.getAddress(i)
+                if op_address and op_address.getOffset() in MAPPER_REGISTERS:
+                    reg_addr = op_address.getOffset()
+                    reg_name = MAPPER_REGISTERS[reg_addr]
+                    
+                    # Try to grab the immediate value being written (the Bank Number)
+                    # On M68k, usually operand 0 is the source (value) and operand 1 is destination (register)
+                    bank_val = "UNKNOWN"
+                    if num_operands > 1:
+                        # Extract the literal value being loaded into the register
+                        bank_val = ins.getDefaultOperandRepresentation(0)
+                    
+                    # Calculate the physical ROM offset being exposed
+                    # Each bank index represents a 512KB (0x80000) chunk of the 40Mb file
+                    try:
+                        bank_int = int(bank_val.replace('#', '').replace('$', '0x'), 16)
+                        rom_offset = bank_int * 0x80000
+                        comment_str = "BANK SWITCH: Loading Bank {} (ROM Offset: 0x{:06X}) into slot {}".format(
+                            bank_int, rom_offset, reg_name.split('_')[2]
+                        )
+                    except ValueError:
+                        comment_str = "BANK SWITCH: Dynamic write to {} detected.".format(reg_name)
+                    
+                    # Place a primary code comment right next to the instruction
+                    ins.setComment(ins.PLATE_COMMENT, comment_str)
+                    print("Found trigger at {}: {}".format(ins.getAddressString(), comment_str))
+
+# Execute the analysis
+analyze_mapper_writes()

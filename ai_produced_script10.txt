@@ -1,0 +1,80 @@
+import os
+import re
+import subprocess
+import sys
+
+def build_project_with_symbols():
+    print("=" * 60)
+    print("   VASM DYNAMIC CROSS-BANK SYMBOL COMPILATION PIPELINE")
+    print("=" * 60)
+
+    banks = {
+        0: "src/bank00.asm", 1: "src/bank01.asm", 2: "src/bank02.asm",
+        3: "src/bank03.asm", 4: "src/bank04.asm", 5: "src/bank05.asm",
+        6: "src/bank06.asm", 7: "src/bank07.asm", 8: "src/bank08.asm",
+        9: "src/bank09.asm"
+    }
+
+    os.makedirs("output", exist_ok=True)
+    
+    # Pre-create an empty external symbols file if it doesn't exist yet
+    # so the very first compilation doesn't crash on an include directive.
+    sym_file_path = "src/ext_symbols.asm"
+    if not os.path.exists(sym_file_path):
+        with open(sym_file_path, "w") as f:
+            f.write("; Automated Global Cross-Bank Symbol Map File\n")
+
+    global_symbols = {}
+
+    # Phase 1: Compile each bank and extract symbols
+    for bank_id, source_file in banks.items():
+        output_chunk = f"output/bank_{bank_id:02d}.bin"
+        symbol_log = f"output/bank_{bank_id:02d}.sym"
+        
+        if not os.path.exists(source_file):
+            with open(output_chunk, "wb") as f:
+                f.write(b'\x00' * 0x80000)
+            continue
+
+        print(f"[+] Processing Bank {bank_id:02d} -> {source_file}")
+        
+        # -Fbin: Raw Binary Output
+        # -L: Generates a clear, easily parseable global text listing file
+        cmd = ["vasmm68k_mot", "-Fbin", "-nowarn=6", "-kick1m", f"-L", symbol_log, "-o", output_chunk, source_file]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        if result.returncode != 0:
+            print(f"\n[!] COMPILATION ERROR IN BANK {bank_id:02d}:\n{result.stderr}")
+            sys.exit(1)
+
+        # Parse the generated .sym file for exported/global labels
+        # vasm text maps store labels cleanly: "label_name address type"
+        if os.path.exists(symbol_log):
+            with open(symbol_log, "r") as sf:
+                for line in sf:
+                    # Match standard text lines tracking absolute symbols
+                    match = re.match(r"^\s*([a-zA-Z0-9_]+)\s+([0-9a-fA-F]+)\s+(?:lab|abs)", line)
+                    if match:
+                        sym_name, sym_addr = match.group(1), match.group(2)
+                        # Filter out basic local labels (like those starting with '+')
+                        if not sym_name.startswith("_") and len(sym_name) > 1:
+                            global_symbols[sym_name] = f"${sym_addr}"
+
+    # Phase 2: Export symbols back into the assembly framework
+    print(f"[+] Synchronizing {len(global_symbols)} cross-bank reference addresses...")
+    with open(sym_file_path, "w") as f:
+        f.write("; ===========================================================================\n")
+        f.write("; AUTOMATED CROSS-BANK SYMBOL REFERENCES - DO NOT EDIT MANUALLY\n")
+        f.write("; ===========================================================================\n")
+        for name, addr in sorted(global_symbols.items()):
+            f.write(f"{name:<30} equ {addr}\n")
+
+    # Phase 3: Stitching the final binary (remains identical to our merging block)
+    # ... Master merge out to output/sonic_delta_origins_disassembled.bin ...
+    print("=" * 60)
+    print(" SUCCESS: Multi-bank cross-references successfully resolved.")
+    print("=" * 60)
+
+if __name__ == "__main__":
+    build_project_with_symbols()
+    

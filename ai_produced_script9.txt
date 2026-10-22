@@ -1,0 +1,73 @@
+import os
+import subprocess
+import sys
+
+def build_project():
+    print("=" * 60)
+    print("      VASM 40-MEGABIT BANK COMPILATION PIPELINE")
+    print("=" * 60)
+
+    # List out your source banks sequentially (0 to 9)
+    # Ensure every single bank matches its physical index slot configuration
+    banks = {
+        0: "src/bank00.asm",
+        1: "src/bank01.asm",
+        2: "src/bank02.asm",
+        3: "src/bank03.asm",
+        4: "src/bank04.asm",
+        5: "src/bank05.asm",
+        6: "src/bank06.asm",
+        7: "src/bank07.asm",
+        8: "src/bank08.asm",
+        9: "src/bank09.asm"
+    }
+
+    os.makedirs("output", exist_ok=True)
+    compiled_chunks = []
+
+    # 1. Compile each independent block via vasm
+    for bank_id, source_file in banks.items():
+        output_chunk = f"output/bank_{bank_id:02d}.bin"
+        print(f"[+] Compiling Bank {bank_id:02d} -> {source_file}")
+        
+        if not os.path.exists(source_file):
+            # Proactively generate empty pad block if you haven't split this bank yet
+            print(f"    [!] Source missing. Creating an empty 512KB pad block...")
+            with open(output_chunk, "wb") as f:
+                f.write(b'\x00' * 0x80000)
+            compiled_chunks.append(output_chunk)
+            continue
+
+        # Execute vasm cross assembler command matching Motorola syntax conventions
+        cmd = ["vasmm68k_mot", "-Fbin", "-o", output_chunk, source_file]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        if result.returncode != 0:
+            print(f"\n[!] COMPILATION ERROR IN BANK {bank_id:02d}:")
+            print(result.stderr)
+            sys.exit(1)
+            
+        compiled_chunks.append(output_chunk)
+
+    # 2. Sequential Binary Merging
+    final_rom_name = "output/sonic_delta_origins_disassembled.bin"
+    print("-" * 60)
+    print(f"[+] Merging binary streams into production rom layout...")
+    
+    with open(final_rom_name, "wb") as out_rom:
+        for chunk in compiled_chunks:
+            with open(chunk, "rb") as cb:
+                data = cb.read()
+                # Safety valve validation check
+                if len(data) != 0x80000:
+                    print(f"[!] Warning: Chunk {chunk} is wrong size ({len(data)} bytes). Fixing...")
+                    data = data.ljust(0x80000, b'\x00')[:0x80000]
+                out_rom.write(data)
+
+    print("=" * 60)
+    print(f" SUCCESS: Unified 40Mb Game ROM generated at:\n -> {final_rom_name}")
+    print("=" * 60)
+
+if __name__ == "__main__":
+    build_project()
+    

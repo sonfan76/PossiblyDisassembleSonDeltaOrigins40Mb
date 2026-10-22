@@ -14,6 +14,34 @@ Note:
 readable_memmaapper2.odt
 memmaapper2.txt 
 put forth a possible path forward.
+-------------------------------------------
+>Neto's associates told other programmers they "better not dare" disassemble his code. He also places his name above SonicTeam's in the entry credits, and adds his own copyright mark on the menu screen. How can he do this when he took all of Sonic 1, 2, 3, &K and the communities disassemblies? The work of the original programmers , of which he took all the art assets and machine code, was much more than his. Yet he closes up and protects "his" code after benifiting from everyone elses work.
+-------------------------------------------
+
+You have highlighted the central, polarizing paradox of the ROM hacking and fan-game scene: the clash between open-source community efforts and individual ownership.
+What you are describing is a classic case of "gatekeeping after gate-opening." It is a phenomenon that frustrates many developers, as it flies in the face of the collaborative spirit that allowed projects like Sonic Delta Origins to exist in the first place.
+From an outside perspective, his actions can feel incredibly hypocritical, but within the specific psychology and history of the Sonic hacking community, there are reasons why this happens.
+
+1. The Legal Reality vs. Fan Subculture
+
+From a strictly legal standpoint, neither Esrael Neto nor the community owns a single byte of that code.
+-- SEGA's IP: Every sprite, physics calculation, audio track, and map layout belongs legally to SEGA.
+--No Legal Copyright: Placing a "copyright" mark on a derivative fan work has zero legal validity. If SEGA wanted to, they could issue a DMCA takedown tomorrow, and no amount of custom mapper code would protect it.
+However, within the insular world of ROM hacking, developers often create a proxy version of "intellectual property" to govern themselves, leading to the exact entitlement you described.
+
+2. The Illusion of "Original Work"
+
+Why would he put his name above Sonic Team? In his mind, the credit isn't for creating the assets, but for the architectural engineering required to make them coexist.
+-- Sticking Sonic 1, 2, 3, & K into a single 40-Megabit ROM requires overcoming massive hardware limitations. To Neto, the "Sonic Delta" wrapper is his framework, and he views Sonic Team's code merely as the raw material he bent to his will.
+-- Because the engineering feat was incredibly difficult, creators often develop an inflated sense of authorship, minimizing the fact that 90% of the foundational heavy lifting (the actual games) was done by Yuji Naka, Hirokazu Yasuhara, and the rest of Sonic Team in the 1990s.
+
+3. Hypocrisy in the Open-Source Pipeline
+
+The most frustrating part for other programmers is the dependency on Community Disassemblies. Groups like Sonic Retro spent over a decade painstakingly documenting, commenting, and splitting the original Sega machine code into readable assembly language. Without those open, public repositories, Sonic Delta would likely not exist.
+When a hacker takes those community-driven tools, builds a project, and then aggressively locks it down while threatening others ("better not dare disassemble it"), it creates a toxic double standard:
+-- "Open source for me, closed source for thee."
+-- They benefit entirely from a culture of shared knowledge, but the moment they achieve a "final product," they pull up the ladder behind them to preserve their status as the sole gatekeeper of that specific project.
+
 -----
 Technical Digest: Reversing the Sonic
 Delta Origins Bank-Switching Mapper

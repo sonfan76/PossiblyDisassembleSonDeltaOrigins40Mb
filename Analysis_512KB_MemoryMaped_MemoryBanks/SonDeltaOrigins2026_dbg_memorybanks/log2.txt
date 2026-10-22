@@ -1,0 +1,15 @@
+Opening ROM: Sonic_Delta_Origins_2026.bin (41.9 Megabits / 5242880 bytes)
+Created output directory: 'extracted_banks/'
+ -> Successfully extracted Bank 00 -> bank_00_[0x000000-0x07FFFF].bin
+ -> Successfully extracted Bank 01 -> bank_01_[0x080000-0x0FFFFF].bin
+ -> Successfully extracted Bank 02 -> bank_02_[0x100000-0x17FFFF].bin
+ -> Successfully extracted Bank 03 -> bank_03_[0x180000-0x1FFFFF].bin
+ -> Successfully extracted Bank 04 -> bank_04_[0x200000-0x27FFFF].bin
+ -> Successfully extracted Bank 05 -> bank_05_[0x280000-0x2FFFFF].bin
+ -> Successfully extracted Bank 06 -> bank_06_[0x300000-0x37FFFF].bin
+ -> Successfully extracted Bank 07 -> bank_07_[0x380000-0x3FFFFF].bin
+ -> Successfully extracted Bank 08 -> bank_08_[0x400000-0x47FFFF].bin
+ -> Successfully extracted Bank 09 -> bank_09_[0x480000-0x4FFFFF].bin
+
+Extraction complete! All hardware banks have been cleanly separated.
+You can now cross-reference these files individually inside Ghidra or your hex editor.

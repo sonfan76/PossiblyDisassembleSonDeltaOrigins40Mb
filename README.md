@@ -7,6 +7,9 @@ Neto boasts that it is not possible to disassemble "his" Sonic 1/2/3&K hack, (th
 >Esrael Neto >— >9:13 PM
 >If SEGA is not against the hack, who is you? Good luck with disassembling Sonic Delta Origins. The resulting code will easily have incorrect pointers due to how I handle the mapper.
 
+Is he right?
+Has the gauntlet been thrown down?
+
 -----
 Technical Digest: Reversing the Sonic
 Delta Origins Bank-Switching Mapper

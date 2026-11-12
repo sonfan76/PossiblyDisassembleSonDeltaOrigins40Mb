@@ -1,5 +1,6 @@
 # PossiblyDisassembleSonDeltaOrigins40Mb
 ( https://rumble.com/v7i8d0u-free-the-software-full-2-hour-copyleft-concept-soundtrack-m68k-1983-gnu-eth.html )
+
 ( https://archive.org/details/full_album )
 
 Feasability study on returning the Assembly code that was stuck together to make Sonic Delta Origins 40Mb, to the community (it was made using the public son 1 2 , 3&amp;k disassemblies, but the guy who put it together bans anyone who would in turn disassemble it, even though he used public disassemblies to make it)

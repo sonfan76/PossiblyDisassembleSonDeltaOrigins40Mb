@@ -1,6 +1,5 @@
 # PossiblyDisassembleSonDeltaOrigins40Mb
 ( https://rumble.com/v7i8d0u-free-the-software-full-2-hour-copyleft-concept-soundtrack-m68k-1983-gnu-eth.html )
-
 Feasability study on returning the Assembly code that was stuck together to make Sonic Delta Origins 40Mb, to the community (it was made using the public son 1 2 , 3&amp;k disassemblies, but the guy who put it together bans anyone who would in turn disassemble it, even though he used public disassemblies to make it)
 
 The value in this is that it would provide a nice base for artists and M68K ASM programmers to make Sonic maps or even random generators for it as all the art assets would be reachable being in the same game. There has been one random level generator created in the past: s1rl-v011.bin  . A unified project such as SDO-40mb would be a good base to continue such things as it has all the art assets packed.

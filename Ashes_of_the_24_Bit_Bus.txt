@@ -1,0 +1,689 @@
+================================================================================
+                        ASHES OF THE 24-BIT BUS
+                     Complete Novella & Technical Appendices
+================================================================================
+
+PROLOGUE: THE MEMORY MAPPER OF CORE 127
+--------------------------------------------------------------------------------
+The wind outside the Tyan-paneled bunker tasted like copper and cold ash, but inside, the air smelled of warm ozone and solder flux.
+
+Tails sat cross-legged on a stack of salvaged technical manuals—thick, weathered volumes with faded covers about Free Software and system architecture that had survived the firestorm in the vault below. A cracked diagnostic monitor bathed his yellow fur in a soft, steady amber glow. Beside him, A7, the tiny, egg-shaped robotic Chao, hovered three inches above the floor, its internal cooling fans emitting a rhythmic, comforting purr at a down-sampled 3.58 MHz.
+
+Sonic leaned against the heavy copper Faraday netting woven into the bunker wall, his arms crossed, watching his little brother work. Every few minutes, Sonic would walk over, drop a hand between Tails’ triangular ears, and ruffle the fur there—a quiet, grounding gesture that kept the silence of the dead world at bay.
+
+"You've been staring at that address table for two hours, buddy," Sonic said softly, his voice low so he wouldn't startle the fox. "What's the holdup? Thought you already mapped the water filtration loops."
+
+Tails didn't look up from the green phosphor lines scrolling across the screen. His two tails swished slowly behind him, sweeping the dust off the concrete floor. "It's not the pumps, Sonic. It's the memory boundary."
+
+He tapped a gloved finger against the edge of the terminal. On the screen sat an archived email from November 2026—a relic pulled from the surviving flash storage of the 128-core Gallium Arsenide workstation before the main compute tiles burned out.
+
+"Look at what the humans were arguing about right before the end," Tails murmured, scrolling through the plain-text message from rms@gnu.org. "Someone took all the disassembled machine code and art assets from an old game series—our series, Sonic—and used a memory mapper to stitch them all together into one contiguous program. They called it an educational use. A way to bypass the 24-bit flat memory limit of the original 68000."
+
+Sonic walked over and crouched beside the stack of books, resting his chin on his palm. "Okay, translate that from 'Tails' to 'Sonic.' Why does a memory mapper matter now?"
+
+"Because of how it works," Tails said, his ears flattening slightly. "The original 68000 only had a 24-bit address space. You hit a wall at sixteen megabytes. To get past it, you use bank-switching—swapping sections of addressable memory in and out on the fly so you can load massive lookup tables. The humans used those exact kind of high-precision lookup tables in their re-entry vehicles. When they lowered the warhead yields from nine-and-a-half megatons down to one, the targeting window shrank. They needed an order-of-magnitude increase in mathematical accuracy just to hit their targets."
+
+Sonic’s smile faded, his emerald eyes hardening as he looked at the glowing Gallium Arsenide chip resting in its custom socket on the workbench. "They used the same trick that stitched our old worlds together to guide the missiles."
+
+"Yeah," Tails whispered. His voice caught, and he gripped the edge of the heavy book beneath him. "And look at what the old man wrote in the email. He called out their hypocrisy. He said they wanted everyone else's code to be free, while keeping their own changes proprietary—hoarding the knowledge, locking people out, and saying games weren't important."
+
+Tails turned to look at Sonic, his blue eyes glistening in the amber light of the monitor. "NETO—the military contractors—they took the open code, built their proprietary mappers, locked the gates, and burned the whole world down because they treated people like variables in a lookup table. They forgot that software is supposed to belong to the people who live with it."
+
+Silence stretched across the bunker, broken only by the soft chiptune trill of A7 nudging its aluminum chassis against Sonic’s shoe.
+
+Sonic reached out, gently cupping the back of Tails’ head, and pulled him forward until their noses brushed—a soft, instinctual nuzzle that made Tails’ whiskers twitch and his shoulders finally drop.
+
+"Hey," Sonic said, keeping his forehead pressed against the fox's brow. "They're gone, little bro. NETO, the contractors, the guys hoarding the code—they all lost. You know what's left?"
+
+Tails swallowed hard, leaning into the warmth of his big brother's touch. "Core 127."
+
+"Core 127," Sonic agreed, pulling back just enough to flash a crooked, defiant grin. "And you. And me. And those 'unimportant' games that kept us alive when the rest of that 15 GHz monster melted down. So what are you gonna do with that memory mapper?"
+
+Tails wiped his eyes with the back of his glove, looked back at the terminal, and took a deep, steady breath. A spark returned to his eyes—the familiar, unstoppable fire of an engineer who refused to let a good piece of hardware go to waste.
+
+"I'm opening it up," Tails said, his fingers flying across the keys. "No proprietary locks. No hidden registers. I'm using the bank-switching mapper to swap in the atmospheric scrubbers and the hydroponic lookup tables—all on the same 24-bit bus that runs our old levels."
+
+He hit ENTER, compiling the clean, symmetric m68k assembly patch. Down on the workbench, the radiation-hardened Gallium Arsenide substrate hummed at a steady, unthrottled frequency. On the VDP display, a bright, banding-free magenta and amber sunrise bled across the background plane, while in the foreground, a tiny pixel-art fox and a blue hedgehog stood side by side under a completely open sky.
+
+"All software ought to be free," Tails said softly, leaning back against Sonic’s chest as his big brother wrapped an arm around his shoulders. "And from now on, it is."
+
+
+CHAPTER 1: GHOSTS IN THE SILO
+--------------------------------------------------------------------------------
+Three weeks after Tails patched the environmental mapper, the air inside Bunker 04 finally lost its metallic bite. In the hydroponics bay, rows of pale green lettuce and dwarf tomatoes hummed beneath warm-spectrum LEDs, their nutrient pumps clicking in steady, 60-hertz harmony with the V-Blank interrupt of Core 127.
+
+Up in the main control room, however, A7 was hovering in tight, agitated circles near the heavy blast door.
+
+The tiny egg-shaped robotic Chao emitted a low, insistent bweep-bweep—a descending two-tone square wave straight out of an old 16-bit sound driver—and bumped its brushed-aluminum shell gently against Sonic’s shin.
+
+Sonic looked down from the workbench where he was tightening a copper grounding strap. "Whoa, easy there, little buddy. You're gonna dent your casing. What's got your circuits in a twist?"
+
+Tails rolled his chair over from the console, adjusting his amber-tinted magnifying goggles. He plugged a braided serial cable into the diagnostic port beneath A7’s chin. Lines of raw hex dumps cascaded down Tails' portable flat-panel display.
+
+"He's picking up a carrier wave on the subterranean fiber trunk," Tails said, his ears perking up as he traced the packet headers. "It's weak—barely above the thermal noise floor—but it's synchronous. Something three kilometers northeast of here just woke up and started broadcasting a beacon."
+
+Sonic’s eyes narrowed. "NETO?"
+
+"Same encryption framing," Tails confirmed, tapping a key to isolate the unencrypted routing preamble. "It’s an automated cold-storage vault. Probably a hardened continuity-of-government archive built under the old granite ridge. If its geothermal tap just cycled back online, it could hold pre-war technical libraries, seed catalogs, medical databases... everything."
+
+Sonic stood up, rolling his shoulders until his joints popped, and flashed a grin that cut right through the dim bunker lighting. "Sounds like a field trip. Grab your toolkit, little bro. Let's go see what they left behind."
+
+Before heading for the airlock, Sonic paused, stepping over to Tails. He reached out and ruffled the soft fur between the young fox's triangular ears, letting his hand linger for a heartbeat. "Stick close to me once we breach the outer door, okay? Even if the humans are gone, old military hardware doesn't always know the war is over."
+
+Tails leaned briefly into the touch, his two tails giving a confident wag. "Got it. Plus, I've got the root key from Core 127 loaded onto my deck. If it speaks m68k, I can talk to it."
+
+
+CHAPTER 2: THE VAULT UNDER THE RIDGE
+--------------------------------------------------------------------------------
+The surface was a quiet ocean of gray ash under a bruised, violet twilight. Frost crunched beneath Sonic’s red-and-white shoes as he jogged effortlessly ahead, scouting the rubble of collapsed concrete pylons while Tails glided smoothly beside him, using his twin tails like twin rotors to skim six inches above the jagged debris. A7 zipped in Tails' slipstream, its optical sensors glowing a steady cyan.
+
+Half an hour later, they found the vault entrance wedged into the base of a shattered granite cliff. A massive blast door, scorched black on the outside by thermal shockwaves, stood ajar by four inches—its hydraulic locking pins sheared clean off during the final exchange.
+
+Sonic wedged his gloved fingers into the gap, braced a foot against the concrete frame, and heaved. With a shriek of protesting steel, the six-ton door ground backward on its tracks.
+
+Inside, the air was freezing, dry, and smelled faintly of dust and dry-cell batteries. Emergency floor strips flickered to life in a pale blue line leading down a long corridor into a central rotunda.
+
+Unlike their cramped, jury-rigged bunker, this place was immaculate. Rows of matte-black server monoliths stood like silent tombstones behind glass partitions. At the center of the room sat a single terminal desk, untouched by dust.
+
+Tails approached the console, pulling his portable deck from his satchel, while Sonic kept watch near the entrance, arms crossed, ears twitching at every settle of the mountain above them.
+
+"Look at the architecture," Tails breathed, hooking his serial bridge into the main terminal bus. "They didn't use x86 or ARM for the deep archive controllers. They used radiation-hardened Gallium Arsenide 68k clones—the exact precursor to Project Janus."
+
+"Can you get in?" Sonic asked over his shoulder.
+
+"They tried to lock the filesystem with a proprietary hardware dongle," Tails muttered, his fingers flying across his mechanical keyboard as he pulled up his own disassembly tools. "Just like the email said. They took open standards, wrapped them in layers of DRM and obfuscated pointers, and threw away the key so nobody outside their clearance level could ever read it."
+
+A7 hovered beside the terminal, extending a tiny probe into the aux port and chirping a sequence of rapid harmonic arpeggios.
+
+"Good catch, A7!" Tails grinned, spotting the unmasked bus line his robotic companion had just bridged. "They left the debug vector unencrypted at $000008. Watch this."
+
+Tails injected a forty-byte loader straight into the controller's instruction cache, bypassing the proprietary lock entirely and mounting the main optical storage array as a flat, readable volume.
+
+Across the main glass wall of the rotunda, a giant projection screen flickered to life.
+
+Sonic walked over, standing beside Tails as directory after directory unfolded in crisp amber text:
+* /ARCHIVE_01/AGRICULTURE_SEED_GENOMICS/
+* /ARCHIVE_02/OPEN_MEDICINE_PHARMACOPEIA/
+* /ARCHIVE_03/CIVIL_ENGINEERING_SCHEMATICS/
+* /ARCHIVE_04/CULTURAL_PRESERVATION_MEDIA/
+
+Tails let out a long, shaky breath, his eyes wide as he scrolled through thousands of terabytes of human knowledge—textbooks, architectural blueprints, clean-water chemistry, and right at the bottom of the cultural directory, complete, unencrypted archives of pre-war music, literature, and software.
+
+"They locked it all up to keep it out of the wrong hands," Sonic said quietly, looking up at the towering wall of glowing data. "And if we hadn't come along, it would've just sat in the dark forever."
+
+"Not anymore," Tails said, initiating a high-speed optical transfer to A7's solid-state core and setting the vault’s external transceiver to broadcast an unencrypted, open-access beacon across every civilian frequency on the band. "We're mirroring the whole thing back to Core 127. And anyone else out there with a receiver and a soldering iron gets the keys for free."
+
+Sonic smiled, resting a hand on Tails' shoulder as the vault's cooling fans spun up to a steady, peaceful hum. For the first time since the sky burned, the silence outside didn't feel quite so empty.
+
+
+CHAPTER 3: THE BROADCAST ON 14.230 MHz
+--------------------------------------------------------------------------------
+For nine days after they breached the granite vault, Bunker 04 sounded like an orchestra tuning up in a submarine.
+
+Tails had spliced the high-gain discone antenna on the surface ridge directly into the vault’s optical fiber trunk, routing the entire unencrypted archive through Core 127’s auxiliary DMA channels. Every sixty seconds, a clean, slow-scan packet burst pulsed out across the 20-meter amateur radio band—no encryption, no handshake fees, just raw, self-extracting schematics for water distillation, penicillin synthesis, and the complete source tree for Tails’ open environmental mapper.
+
+Down in the living quarters, Sonic was stretched out on a salvaged canvas cot, tossing a tarnished brass hex nut up toward the reinforced concrete ceiling and catching it with lazy precision. Nearby, A7 floated beside the hydroponic trays, gently misting the tomato leaves with a tiny brass nozzle Tails had machined out of a spent shell casing.
+
+Then, the SN76489 sound chip on the main console did something it hadn't been programmed to do.
+
+Instead of the steady, soothing arpeggio of the V-Blank heartbeat, the speaker crackled with white noise—followed by three sharp, deliberate bursts of Morse code, tapped out by a human hand on a physical telegraph key.
+
+CQ CQ CQ DE K2ASH
+
+Sonic’s eyes snapped open. He caught the brass nut mid-air and was on his feet before it even clicked against his palm. "Tails!"
+
+"I hear it! I hear it!" Tails scrambled over his stack of technical manuals, nearly tripping over a spool of coaxial cable as he threw himself into the operator's chair. His twin tails spun wildly behind him for balance before settling down as his gloved fingers flew across the transceiver dials.
+
+He narrowed the passband filter, cutting through the ionospheric static that still hung heavy over the Pelagic Coast. The signal strengthened—coming from roughly forty miles south-southeast, somewhere out past the shattered causeways of the old Cinder Shoals barrier islands.
+
+"They're running low power," Tails breathed, adjusting the gain. "Maybe twenty watts off a lead-acid battery bank. Hold on—they're switching to slow-scan digital text."
+
+Lines of crisp, high-contrast characters began painting down the green phosphor monitor, one scanline at a time:
+
+TO: CORE 127 / UNKNOWN OPERATOR
+FROM: ASHEN POINT LIGHTHOUSE RELAY (K2ASH)
+WE RECEIVED YOUR OPEN PACKETS ON 14.230.
+OUR DESALINATION CONTROLLER FRIED IN THE EMP.
+WE HAVE 34 PEOPLE HERE. THREE KIDS WITH FEVER.
+YOUR MAPPER CODE MATCHES OUR SALVAGED 68K INDUSTRIAL BOARDS.
+CAN YOU SEND THE PINOUTS FOR THE PUMP INTERFACE?
+AND THE PENICILLIN GUIDE FROM ARCHIVE_02?
+
+The bunker went completely silent, save for the quiet hum of the Gallium Arsenide substrate cooling on the workbench.
+
+Sonic leaned over the back of Tails’ chair, reading the glowing green lines twice. The carefree grin was gone from his face, replaced by a fierce, focused intensity. "Thirty-four people. Out on the coast."
+
+Tails swallowed hard, his ears twitching forward as his mind already began racing through memory addresses and circuit diagrams. "Ashen Point... the old stone lighthouse must have shielded their basement from the blast wave. If they have industrial 68000 controller boards, they can run my exact environmental mapper—they just need the hardware adapter schematic to drive their saltwater pumps."
+
+"How fast can you draw it up?" Sonic asked.
+
+"I don't have to draw it up," Tails said, already pulling up the civil engineering directory they had liberated from the NETO vault. "It's right here in ARCHIVE_03. Look—the contractors had full schematics for coastal desalination plants sitting behind a classified lock the whole time."
+
+Tails opened a fresh text buffer, stripped out every last trace of the military classification headers, and began writing a clean, step-by-step wiring guide in plain text—pairing it with the exact synthesis protocol for basic fungal penicillin from ARCHIVE_02.
+
+As Tails worked, Sonic walked over to the workbench and picked up a pair of heavy canvas packs. "Send the files first so they can get their water running tonight. Then pack a portable transceiver and whatever medical supplies we pulled from the vault's first-aid lockers."
+
+Tails paused, looking over his shoulder at his big brother. "You're thinking of running it down there?"
+
+"Forty miles across broken highways and marshland?" Sonic tapped the toe of his red shoe against the concrete floor, a spark of familiar, restless energy lighting up his emerald eyes. "Give me forty-five minutes. Maybe an hour if the bridges are out."
+
+Tails smiled—a genuine, bright smile that lit up the whole dim room—and hit TRANSMIT.
+
+Across the room, A7 let out a cheerful, rising chiptune trill, spinning once in mid-air as the discone antenna on the ridge outside began beaming terabytes of forbidden, life-saving code out over the dark Pelagic waters.
+
+For the first time since the sky burned, the 24-bit bus wasn't just keeping two brothers alive in a hole in the ground. It was building a bridge.
+
+
+CHAPTER 4: ACROSS THE MURK SOUND
+--------------------------------------------------------------------------------
+Five minutes after Tails hit TRANSMIT, the heavy blast door of Bunker 04 rolled shut behind a blue blur.
+
+Sonic hit the frozen dirt of the Cinder Barrens ridge at a dead sprint, kicking up twin plumes of gray ash and pine needles as he angled south-southeast toward the coast. Behind him, tucked securely inside a padded aluminum case strapped across his back, were three glass vials of broad-spectrum antibiotics from the vault’s medical locker, a spare 15-volt lithium pack, and a freshly burned EPROM chip loaded with Tails’ desalination driver.
+
+He cut down through the charred remains of the Whispering Pines, weaving effortlessly between fallen pitch pines and the rusted skeletons of abandoned vehicles clogging the old expressway ramps. Even in the dead of November, the wind whipping past Sonic’s quills smelled sharp and salty—the unmistakable tang of the Murk Sound just beyond the marshlands.
+
+At the southern edge of the mainland, where the shattered concrete spans of the Old Iron Causeway dropped off into black, choppy water, Sonic didn't even break stride.
+
+He curled tightly into a ball at the edge of the collapsed bridge deck, revved up with a high-pitched whine that echoed across the empty bay, and launched himself off the broken rebar like a blue comet.
+
+He skimmed across the freezing surface of the Murk Sound—his red shoes skipping across the whitecaps in rapid, rhythmic bursts of speed that sent twin roostertails of salt spray arcing twenty feet into the twilight air. Halfway across the water, a low, jagged bank of radioactive fog rolled in from the Pelagic inlet, thick enough to turn the horizon into bruised purple static.
+
+Sonic trusted the bearing Tails had plotted on his wrist-mounted directional receiver—a tiny green dot pulsing steadily in sync with the 14.230 MHz carrier wave.
+
+Three minutes later, his shoes struck wet, packed sand on the barrier island.
+
+Rising out of the swirling sea mist ahead stood the tall, black-and-white banded tower of the Ashen Point Lighthouse. Its lantern room at the top was dark, shattered by the thermal pulse months ago, but from a narrow ventilation slit at the base of the stone keeper’s quarters came the faint, unmistakable glow of an amber CRT monitor and the rhythmic chug of a diesel-converted generator.
+
+Sonic slowed to a jog, raising both hands in plain sight as he approached the heavy oak door. Before he could even knock, the deadbolt slid back with a sharp metallic clack.
+
+A tall, gaunt woman in a faded Coast Guard parka stood in the doorway, cradling an old lever-action rifle—until her eyes fell on the short, cobalt-blue hedgehog standing on her porch with a frost-covered aluminum case strapped to his shoulders.
+
+For three full seconds, neither of them moved. The only sound was the surf crashing against the Pelagic dunes a hundred yards away.
+
+Then, from inside the stone room behind her, a cracked speaker crackled to life with a familiar, cheerful two-tone chiptune chime, followed by Tails’ voice echoing faintly over the shortwave radio: "K2ASH, this is Core 127. Check your front door."
+
+The woman lowered the rifle, her shoulders sagging as a breathless laugh escaped her lips. She stepped aside, gesturing toward the warm, crowded room inside where bundled-up families were gathered around a glowing green terminal screen.
+
+"You're faster than the packet transmission," she said, her voice hoarse with disbelief and relief.
+
+Sonic grinned, unstrapping the aluminum case from his back and holding it out to her. "Yeah, well—my little brother writes good code, and I hate keeping people waiting. Where do we plug this in?"
+
+
+CHAPTER 5: THE LIGHTHOUSE MESH
+--------------------------------------------------------------------------------
+The keeper’s quarters beneath the Ashen Point Lighthouse smelled of damp wool, diesel exhaust, and boiled salt air.
+
+Down in the brick-lined cellar, thirty-four survivors watched in dead silence as Maya—the woman in the Coast Guard parka, who had been a marine systems engineer at the Cliffside Institute before the exchange—pressed Tails’ freshly burned ceramic EPROM into the zero-insertion-force socket of their salvaged 68000 controller board.
+
+Sonic leaned against a rusted saltwater storage tank, his arms crossed, watching Maya double-check the 1N4007 flyback diode she had soldered across the brine solenoid leads just as Tails’ packet had instructed. Beside the workbench, the lighthouse medic was already drawing the first dose of broad-spectrum antibiotics from the vault vials for the three feverish children upstairs.
+
+"Powering up the 24-volt rail," Maya murmured, throwing a heavy knife switch on the bulkhead.
+
+For a heartbeat, nothing happened. Then, the status LEDs on the industrial board flickered green in a crisp, 60-hertz rhythm. A second later, the heavy high-pressure feed pump shuddered, spun up with a deep, resonant hum, and began pushing raw Pelagic seawater through the reverse-osmosis membranes.
+
+A clear, steady stream of fresh, desalinated water splashed out of the copper outlet pipe into the holding cistern.
+
+A ragged cheer broke out across the cellar. People hugged, wept, and clapped Sonic on the shoulder—though the hedgehog just rubbed the back of his neck with a sheepish grin, pointing a gloved thumb toward the shortwave transceiver sitting on the workbench.
+
+"Don't thank me," Sonic said over the hum of the pump. "Thank the fox on the other end of the radio."
+
+Maya walked over to the transceiver, keyed the microphone, and spoke clearly into the static: "Core 127, this is K2ASH. Pump pressure is steady at 800 PSI. Fresh water is flowing. And we're already re-broadcasting your packet tree on 40 meters so anyone up the Greywater Valley or across the Strait in Port Veridian can catch it."
+
+***
+
+Forty miles north, deep beneath the granite ridge of the Cinder Barrens, Tails let out a whoop that rattled the copper Faraday netting on the bunker walls.
+
+"They're online!" Tails cheered, spinning around in his operator’s chair as A7 hovered beside him, blinking a celebratory pattern of green and gold LEDs across its chassis. "And look at the waterfall display—K2ASH just became a repeater node! Two more stations in Port Veridian and Gull's Roost just picked up the handshake!"
+
+Tails turned back to his terminal, ready to log the new mesh nodes into Core 127’s routing table, when a low, discordant buzz sounded from the optical fiber trunk bridge.
+
+A7 stopped spinning. Its cyan optical sensor narrowed, shifting to a sharp, warning amber as it floated toward the secondary monitor connected to the NETO cold-storage vault.
+
+"What is it, buddy?" Tails frowned, pulling up the system log. "Did the geothermal tap fluctuate?"
+
+"No..." Tails whispered, leaning closer to the green phosphor glass.
+
+While mirroring the public directories from the vault earlier, A7’s background scraper had tripped across a hidden, air-gapped partition tucked behind an unindexed memory bank at $FF0000—a shadow sector that didn't appear in the standard directory tree.
+
+Unlike the agricultural and medical archives, this partition wasn't protected by a simple hardware dongle. It was wrapped in a self-modifying polymorphic lock—and worse, it was actively trying to poll an external satellite uplink that no longer existed.
+
+Tails' ears flattened against his head as he read the unencrypted boot header flashing across the screen:
+
+PROJECT JANUS // SUB-ROUTINE: OMEGA_CONTINGENCY
+STATUS: STANDBY — AWAITING QUORUM FROM ORBITAL RELAY 04
+FAILSAFE TIMER: 71 HOURS, 58 MINUTES REMAINING
+PAYLOAD: AUTOMATED SILO LAUNCH SEQUENCE (REMAINING HARDENED ASSETS)
+
+The warmth drained out of the bunker in an instant.
+
+Tails stared at the countdown ticking down second by second on the amber screen. Even with the cities burned and the contractors gone, the humans' proprietary black-box software was still running—blind, locked, and preparing to finish a war nobody was left to fight.
+
+Tails grabbed his headset, switched the transceiver to the dedicated simplex channel, and keyed the mic with trembling fingers.
+
+"Sonic," Tails said, his voice tight as his hands already began flying across the disassembly keys. "Drop the celebratory lap and get back here as fast as you can. We missed a file in the vault—and it's counting down."
+
+
+CHAPTER 6: DEAD MAN’S SWITCH
+--------------------------------------------------------------------------------
+By the time Sonic tore back down the concrete ramp of Bunker 04—leaving a trail of melted frost and charred pine needles in his wake—Tails had every diagnostic monitor in the control room lit up like a cockpit in a thunderstorm.
+
+"Talk to me, buddy," Sonic said, skidding to a halt behind Tails' chair before the airlock door had even finished cycling shut. "How bad is it?"
+
+"Bad," Tails said without looking up, his twin tails twitching tensely behind him as he fed raw machine instructions into Core 127’s logic analyzer. "It’s a dead man's switch buried in the vault's firmware. When the main orbital relays went dark during the exchange, OMEGA_CONTINGENCY started a seventy-two-hour countdown. If it doesn't receive a valid cryptographic 'stand-down' token from a ground control station before that clock hits zero, it assumes the entire command chain was wiped out—and fires every remaining hardened silo still wired into the regional trunk."
+
+Sonic’s jaw tightened. "Can't you just pull the plug on the vault? Cut the geothermal line?"
+
+"I already checked!" Tails pointed a gloved finger at the schematic scrolling across the left display. "The vault isn't the launch controller—it’s just the keeper of the countdown timer. The actual launch relays are sitting inside a hardened underground switching station miles away, running on independent nuclear batteries. If we cut the fiber here, the switching station sees a sudden loss of carrier and fires immediately."
+
+A7 hovered beside the main Gallium Arsenide workbench, emitting a rapid, anxious sequence of low-pitched square waves as it streamed disassembled hex blocks into Tails' terminal buffer.
+
+"Okay," Sonic said, resting both hands firmly on the back of Tails' chair. "Then how do we stop it?"
+
+"Two ways—and we need both at once," Tails said, his voice steadying as the engineer in him took full control. "First, I have to crack the polymorphic encryption on the vault's token generator so I can forge a valid stand-down packet. That’s going to take Core 127 running at full 15 GHz clock speed—meaning I have to temporarily shut down our VDP graphics and throttle the scrubbers just to keep the chip from overheating."
+
+"And the second part?" Sonic asked.
+
+"Even if I generate the token, the vault's external microwave dish was sheared off in the blast," Tails explained, pulling up a yellowed topological survey of the Cinder Barrens Peninsula from ARCHIVE_03. "To inject the stand-down packet directly into the hardened trunk before the polymorphic keys rotate again, someone has to physically plug a transceiver into the regional repeater tower."
+
+Tails zoomed in on a set of coordinates marked in faded red ink near the center of the peninsula, tucked beside the old rail corridor and the deep-water glacial kettle lake at Lake Miramar.
+
+"Long Lines Hardened Repeater Station 09," Tails read aloud. "Built during the Old Cold War to survive a direct hit. It’s got a direct coaxial tap into the military trunk—and it’s twenty-two miles west of here."
+
+Sonic didn't even blink. "Give me the transceiver."
+
+Before Sonic could grab his pack, the shortwave speaker on the console crackled loudly—cutting through the hum of the cooling fans.
+
+"Core 127, this is K2ASH—Maya at Ashen Point. We heard your emergency priority break on 14.230. And you're not the only ones listening."
+
+Tails hit the transmit toggle, leaning toward the boom mic. "Maya! Did you copy the coordinates for Repeater Station 09?"
+
+"Copied loud and clear," Maya’s voice came back, sharp and steady over the static. "And so did Station W1VER up in Port Veridian. Our old chief engineer here used to contract for Long Lines in the nineties. He says the outer blast hatch at Lake Miramar uses a mechanical three-wheel tumbler lock—no electronics, no power needed—and he’s reading the bypass combination to me right now."
+
+A second, deeper voice broke onto the frequency from across the Pelagic Strait: "Core 127, this is Port Veridian. We’ve got two amateur radio operators with high-gain Yagi antennas pointed straight at the Miramar ridge. Once your runner hooks into the trunk, we can bounce your timing pulse off the ionosphere to synchronize the handshake."
+
+Sonic looked at the speaker, then down at Tails, a slow, fierce grin spreading across his face. "Looks like your open-source network just turned into a pit crew."
+
+Tails grinned back, his fingers already flying across the keyboard as he uploaded the raw packet-injection routine into A7’s internal flash memory. "Take A7 with you! His optical coupler can bridge straight into the Long Lines coaxial manifold faster than I could ever solder it—and keep this slip of paper with the tumbler combination!"
+
+A7 zipped into the air, hovering beside Sonic’s shoulder with a determined, high-pitched trill, its chassis humming at peak frequency.
+
+Sonic scooped the robotic Chao gently under one arm, tucked the handwritten combination into his glove, and glanced at the amber countdown clock ticking past 69:14:08.
+
+"Keep Core 127 cool, little bro," Sonic said, turning toward the open blast door. "We'll be plugged in before you even finish compiling."
+
+With a sonic boom that rattled the dust off the concrete ceiling, the blue blur vanished up the tunnel into the night.
+
+
+FLASHBACK I: THE PROPHECY IN THE STATIC
+--------------------------------------------------------------------------------
+Years later—long after the Miramar relay had been safely neutralized, long after the lighthouse mesh had grown into a chain of quiet coastal settlements trading seed packets and clean-water schematics across the 20-meter band—I still kept a single, yellowed thermal printout pinned beside the workbench of Core 127.
+
+Sonic always thought I kept it as a souvenir of our first night in the vault. He didn't know I had found it before the exchange, back when the world was still intact and the sky hadn't learned how to burn.
+
+It had happened in late October of 2026, two weeks before the sirens went off.
+
+I was sitting cross-legged on a stack of hardbound microprocessor manuals in our old workshop—before the Tyan panels, before the Faraday netting, back when sunlight still slanted through a real glass window in the late afternoon. I had been tinkering with a custom bank-switching routine for a 16-bit cartridge, trying to stitch four separate worlds together onto a single 24-bit flat address bus just to see if the hardware could take it.
+
+I must have fallen asleep with my chin resting on the open pages of a Motorola 68000 Programmer’s Reference Manual.
+
+In the dream, there wasn't any sunlight. There was only the low, persistent hum of a cold-storage terminal and the smell of ozone before a storm. A voice—calm, stripped of all emotion, like an automated broadcast reading coordinates over an empty frequency—spoke to me while lines of hex code scrolled behind my eyelids:
+
+    The m68000 was used extensively in the most technologically advanced era
+    of the Cold War by the DoD. Those weapons persist.
+
+I remember trying to wake up in the dream, my ears flattening as the words kept coming, clear as glass:
+
+    During the Cold War the yield of nuclear missiles easily tipped 9.5
+    megatons. This gave a large targeting window relative to air and ground
+    based targets. Today 1 megaton is the upper limit available. This gives
+    a smaller targeting window: meaning more accuracy is needed for effect.
+    In the re-entry vehicle software, lookup tables are used for
+    mathematical functions and for targeting data. When a smaller yield is
+    used, much more accurate tables are required. An order of magnitude
+    increase often.
+
+Even asleep, my engineer's brain did the math automatically. A 24-bit flat memory space hits a hard wall at sixteen megabytes. You can't fit high-precision trajectory lookup tables inside a tiny address window without swapping banks in and out on the fly.
+
+    The solution to this is to use a memory mapper; to swap in and out
+    sections of addressable memory. This allows larger, more accurate lookup
+    tables. The SSFII memory mapper addition to S1, 2, 3 & Knuckles would be
+    great training for using such memory-mapped tables in a real-world
+    environment. An educational use—that NETO denies you and your children.
+    Denying you the inheritance of this nation. NETO's withholding, after
+    benefiting from the opened code, puts you at risk; as it is necessary
+    for the body of a nation to have the knowledge of use of its arms.
+
+Then the scrolling hex turned blinding white—the exact shade of magnesium burning through cloud cover—and the voice spoke one last time before I bolted upright in my chair, gasping for air:
+
+    And one day, at the end of our days, the m68000 will again be burning
+    bright. As so shall we all.
+
+I wrote every word of it down on a scrap of thermal printer paper before my hands stopped shaking. I didn't show it to Sonic. What was I going to tell him? That a dream told me the exact same bank-switching trick I was using to stitch our old adventures together was being hoarded behind classified military locks to guide one-megaton warheads? That the contractors were taking open knowledge, locking the gates behind them, and leaving everybody else blind to the machinery aimed at their heads?
+
+Two weeks later, the sky turned white just like the dream said it would.
+
+When Sonic dragged me down into the concrete sub-basement of Bunker 04, half-blind from the flash and coughing on ash, the very first thing I saw glowing in the dark was Core 127—the sole surviving tile of a 128-core Gallium Arsenide monster, running hot, running bright, waiting on a 24-bit bus.
+
+Looking back now, sitting in the quiet hum of the bunker while A7 tends the hydroponics and Sonic argues over the shortwave with Maya down at Ashen Point, I finally understand what that dream was trying to warn me about.
+
+NETO thought power meant locking the code away—hoarding the lookup tables, hiding the pointers, keeping the knowledge of the machine out of the hands of the people who had to live beneath it. And when their turn came, their locked boxes couldn't save them. They burned right along with the rest of the world.
+
+The m68000 did burn bright at the end of their days. It’s still burning bright right here on my workbench.
+
+Only now, every register is documented, every bank is open, and the memory mapper doesn't guide missiles anymore—it runs water pumps, grows tomatoes, and carries voices across the dark water. We finally claimed the inheritance they tried to lock away. And we made sure the door stays open for good.
+
+
+FLASHBACK II: DAY ZERO AT LAKE MIRAMAR
+--------------------------------------------------------------------------------
+I still remember the exact color of the sky over Lake Miramar five seconds before the air turned to glass.
+
+It was a Tuesday afternoon—November 10, 2026. The kind of crisp, windless autumn day on the peninsula where the scrub oaks along the southern shore of the kettle lake looked like hammered copper against the slate-blue water. Sonic and I were down by the old stone retaining wall near the water's edge, testing a portable solar-charged transceiver I’d cobbled together out of salvaged radio parts and a handheld 68k dev kit. A7 was bobbing happily over the shallow water, chirping little 8-bit melodies at a pair of confused mallards.
+
+Sonic was leaning back on his elbows on the grass, squinting up at a high-altitude contrail cutting straight east toward the Pelagic Sea. "Hey, little bro," he said, his ear twitching slightly. "Since when do airliners fly that high over Cindervale without leaving a transponder ping on your scope?"
+
+I looked down at my portable spectrum analyzer. The waterfall display wasn't showing a commercial flight. It was blank—except for a sudden, blinding spike across every military UHF band simultaneously, followed by a deafening burst of static that blew out the tiny speaker in my hand.
+
+Before I could even say a word, the northern horizon over the Strait lit up like a second sun.
+
+There was no sound at first—just an impossible, shadow-erasing flash of magnesium white that turned the surface of Lake Miramar into a mirror of liquid fire.
+
+Sonic didn't hesitate. He didn't ask questions, and he didn't look back.
+
+In less than a heartbeat, he was on his feet, scooping A7 out of the air with one arm and grabbing me around the waist with the other. "Hold onto my shoulders and keep your head down!" he shouted, his voice cutting right through the sudden, eerie vacuum that sucked the breath out of my lungs.
+
+He launched us south-southwest into a supersonic blur just as the thermal wave hit the treetops behind us.
+
+I buried my face against Sonic’s shoulder, squeezing my eyes shut as the roar of a million freight trains caught up with us—shattering every window along the rail corridor and flattening the pine barrens in a rolling wall of superheated dust. Even at Mach 1, I could feel the blistering heat scorching the tips of my tails. Sonic angled sharply toward the low granite ridge just south of the expressway—the old, half-buried concrete sub-station we’d stumbled across two months earlier while mapping abandoned telecom conduits.
+
+With the shockwave snapping at our heels, Sonic didn't slow down for the rusted steel service gate. He curled into a spinning buzzsaw of cobalt blue, sheared straight through the corroded padlock, and kicked the heavy blast hatch open just as the pressure wave slammed into the hillside above us.
+
+We tumbled down the concrete stairwell in a heap of dust, tangled limbs, and sparking electronics. Sonic twisted mid-air so his back took the brunt of the concrete landing, wrapping his arms tightly around me and A7 until the heavy steel hatch above us slammed shut and the earth stopped shaking.
+
+For a full minute, the only sound in the pitch-black stairwell was our ragged breathing and the faint, panicked bweep-bweep of A7’s diagnostic buzzer.
+
+"You okay, buddy?" Sonic coughed, his voice hoarse from the ash that had slipped through the door seals. His gloves were scorched gray, and his quills were singed at the tips, but his grip around me didn't loosen until I nodded against his chest.
+
+"I'm okay," I whispered, my voice shaking as I reached into my satchel for my pocket flashlight. "My tails are a little singed, but I'm okay. What about you?"
+
+"Nothing a chili dog wouldn't fix," Sonic tried to joke, though his eyes were dark and serious in the narrow beam of my flashlight as we stood up and looked deeper into the sub-basement.
+
+Beyond a thick, lead-lined interior bulkhead stood a room we hadn't been able to power up two months ago—a hardened, radiation-shielded underground test bay packed with Tyan server racks, copper Faraday netting, and a massive, liquid-cooled Gallium Arsenide compute array hooked into a deep geothermal loop.
+
+The EMP had cooked almost every silicon chip in the room. Dark smoke curled lazily from a hundred dead motherboards.
+
+Except for one.
+
+At the far end of the main workstation, bathed in a steady, defiant amber glow, a single corner tile of the 128-core processor was still alive—its clock crystal humming cleanly on a 24-bit flat bus, completely untouched by the surge that had killed the rest of the world.
+
+I walked up to the terminal, my hands still trembling from the blast, and wiped a layer of concrete dust off the silk-screened label beside the socket.
+
+CORE 127 // m68k-64 SUPER-CLASSIC
+
+Sonic walked up beside me, resting a warm, steady hand between my ears while A7 floated over to dock with the console's auxiliary port, immediately down-sampling its audio clock to match the surviving chip's heartbeat.
+
+Outside, the world we knew had just burned to ash. Inside, in the quiet hum of a single surviving processor, we had just found the spark that would keep us alive.
+
+
+CHAPTER 7: THE MIRAMAR TRUNK
+--------------------------------------------------------------------------------
+Twenty-two miles west of Bunker 04, the midnight air around Lake Miramar was dead still. The kettle lake’s dark surface reflected a bruised purple sky, ringed by the snapped trunks of pitch pines flattened during Day Zero.
+
+Just south of the ruined Peninsula Rail Corridor tracks, hidden beneath a collapsed brick utility shed, stood the sloped concrete bulkhead of Long Lines Hardened Repeater Station 09—a windowless Old Cold War relic built to shrug off megatons.
+
+Sonic skidded to a stop in the ash, cradling A7 under one arm while his emerald eyes scanned the twisted steel rebar hanging over the entrance. "Alright, little buddy. Just like the old chief engineer at Ashen Point said—no electronics, just three brass tumblers."
+
+He pulled the grease-stained slip of paper from his glove, shone his wrist light onto the heavy Sargent & Greenleaf dial set into the two-foot-thick blast door, and spun the wheel with surgical speed.
+
+Left four times to 42. Right three times to 19. Left twice to 87.
+
+With a heavy, oiled clunk, the internal locking bars retracted. Sonic braced a foot against the concrete jamb and hauled the multi-ton door open.
+
+Inside, the air smelled of stale machine oil, dry dust, and the faint ozone tang of a nuclear battery that had been humming silently in the dark for forty years. Emergency amber step-lights flickered on automatically as Sonic stepped down the spiral iron staircase into the subterranean switching bay.
+
+Rows of olive-drab coaxial patch panels stretched across the room like iron organ pipes. At the center of the bay sat the hardened military trunk junction—a thick, lead-jacketed conduit labeled JANUS-TRUNK-EAST // DO NOT DISCONNECT.
+
+A7 zipped out from under Sonic’s arm, hovering three inches from the junction’s armored serial port. Its optical sensor flashed a sharp, urgent cyan as it extended its copper-tipped coupler into the jack.
+
+Instantly, a low, synthesized chime echoed through the concrete chamber—followed by Tails’ voice crackling clearly over the hardwired line from twenty-two miles away: "Sonic! I see your carrier lock! A7’s bridge is clean—we’re riding straight on the underground coax!"
+
+"Good timing, little bro!" Sonic called back, leaning over the junction box as A7’s chassis began vibrating with a high-pitched data whine. "How’s Core 127 holding up?"
+
+Back in Bunker 04, sweat soaked the fur along Tails’ brow. He had stripped off his gloves so his fingers could fly faster across the mechanical keyboard. Every VDP display in the bunker was dark—shut down to divert every milliwatt of cooling power to the Gallium Arsenide chip on the workbench, which was glowing a faint, cherry-red luminescence as it pushed past 14.8 GHz.
+
+"Thermal load is at ninety-four percent!" Tails shouted into his headset, watching the polymorphic key-cracking routine chew through millions of candidate lookup tables per second. "The encryption keeps rotating its pointer offsets every ten seconds—just like a dynamic memory mapper! I'm matching its bank-switching pattern right now... almost got it..."
+
+On the monochrome debug screen in front of Tails, lines of scrambling hex suddenly froze—snapping into crisp, readable 68000 assembly instructions.
+
+KEY MATCH FOUND // OFFSET $00FF84A0
+GENERATING OMEGA STAND-DOWN TOKEN...
+
+"Got it!" Tails yelled, his twin tails spinning wildly behind his chair as he slammed the EXECUTE key. "Port Veridian—hit the ionospheric sync pulse now!"
+
+Two hundred miles north across the Pelagic Strait, the amateur operators at W1VER keyed their high-gain Yagi array, bouncing a razor-sharp timing burst off the upper atmosphere straight onto the Miramar ridge.
+
+Down in the Long Lines bunker, A7 let out a triumphant, three-octave chiptune fanfare. Its optical LEDs shifted from warning amber to a steady, peaceful emerald green.
+
+On the military trunk console beside Sonic, a red mechanical shutter snapped shut over the armed launch relay, and a stamped brass indicator wheel rolled over with a loud ka-chunk:
+
+OMEGA_CONTINGENCY: DISARMED // TRUNK RELEASED TO CIVILIAN MODE
+
+Silence fell over the subterranean switching bay—broken only by the gentle, rhythmic purr of A7’s cooling fans winding back down to 3.58 MHz.
+
+Sonic let out a long breath he felt like he’d been holding since Ashen Point, slumped back against a dusty patch rack, and flashed a crooked grin at the hovering robotic Chao. "Nice work, A7. Remind me to ask Tails to upgrade your sound chip when we get home."
+
+Over the coaxial speaker, Tails let out a breathless laugh mixed with a yawn—the sound of a kid who hadn't slept in thirty-six hours finally letting go of the wheel. "Come on home, Sonic. I'm turning the sunrise VDP back on—and the first batch of hydroponic tomatoes just turned red."
+
+
+CHAPTER 8: THE LESSON ON THE BUS
+--------------------------------------------------------------------------------
+Six months after the Miramar trunk went cold, the heavy blast door of Bunker 04 didn't stay shut anymore. Tails had propped it open with a salvaged cast-iron flywheel so the crisp autumn air of the peninsula could drift down the ramp, carrying the smell of damp pine needles and woodsmoke from the fledgling settlement growing along the southern shore of Lake Miramar.
+
+Inside the main control room, the copper Faraday netting still lined the concrete walls, and Core 127 still hummed warmly on its Gallium Arsenide substrate—except now, Tails wasn't sitting alone in front of the amber CRT.
+
+Sitting cross-legged on the floor around Tails’ stack of weathered Free Software manuals were four kids from the Miramar and Ashen Point camps, each cradling a salvaged 68000 industrial controller board wired to a salvaged monochrome pocket screen. Above them, A7 floated lazily in circles, projecting a soft cyan light onto their notebooks while purring at a soothing 3.58 MHz.
+
+Tails perched on his rolled-up jacket atop his stack of manuals, holding a piece of white chalk in one gloved hand as he pointed to a hand-drawn memory map sketched onto a sheet of slate pulled from the old rail yard.
+
+"Remember," Tails said, his ears perking forward as he looked around the small circle of faces, "a 24-bit bus only gives you sixteen megabytes of flat address space. If you try to cram your weather models, your water-pump curves, and your radio packet buffers into one static block, you're gonna crash the stack every single time."
+
+A twelve-year-old girl from the Ashen Point lighthouse crew—Maya’s niece, Lena—raised her hand, her brow furrowed over her breadboard. "So how do we load the new soil-salinity tables from Port Veridian without wiping out our radio driver?"
+
+Tails smiled, his two tails giving a proud, rhythmic swish behind him. "You don't wipe anything out. You bank-switch. Watch."
+
+He hopped down from his stack of books, knelt beside Lena’s breadboard, and tapped a tiny jumper wire onto her address decoder chip. "Write the bank index to $A130F1. In one clock cycle, the bus swaps out the radio buffer window at $200000 and maps the salinity lookup table straight into its place. Read your values, run your math, and swap the radio bank right back before the next V-Blank interrupt."
+
+Lena tapped the assembly instruction into her keypad and hit RUN. On her tiny pocket screen, the soil-salinity curve plotted smoothly alongside a live incoming packet stream from across the Strait—zero dropped frames, zero collisions.
+
+"Whoa," Lena breathed, grinning up at the young fox. "That’s the exact same trick from the old cartridge games you sent over the mesh!"
+
+"The exact same trick," Tails said softly, his blue eyes reflecting the steady amber glow of Core 127 across the room. "For a long time, the people who built these machines thought you had to lock things up to keep them safe. They thought if they hid the memory maps and kept the code to themselves, they’d stay in control."
+
+Tails stood up, dusting chalk off his gloves, and looked at the four young engineers hunched eagerly over their glowing screens.
+
+"They got it backwards," Tails told them. "A machine only survives if the people living with it know how it works. Nobody owns the 24-bit bus anymore. Every register, every pointer, every line of code in Core 127 belongs to whoever needs it."
+
+Footsteps echoed down the concrete ramp, followed by the unmistakable scent of fresh air and roasted chestnuts.
+
+Sonic strolled into the control room, tossing a cloth sack of warm chestnuts onto the workbench and leaning against the doorway with a crooked grin. "Well, well. Looks like Bunker 04 officially turned into a university while I was out scouting the rail line."
+
+Tails’ ears twitched at the sound of his brother's voice. Before Sonic could even cross his arms, Tails darted across the room and wrapped both arms around Sonic’s waist in a quick, fierce hug—his twin tails wagging so fast they kicked up a breeze across the floor.
+
+Sonic laughed, caught slightly off-guard, before dropping a warm, gloved hand right between Tails’ triangular ears and ruffling the soft yellow fur. "Whoa, easy there, professor! What’s got you in such a good mood?"
+
+Tails stepped back, wiping a smudge of chalk off his muzzle with the back of his glove, and glanced toward the main VDP monitor beside his workbench. On the screen, the tiny pixel-art fox and blue hedgehog stood side by side under a seamless, banding-free magenta and amber sunrise—while beneath them, twelve green status lights blinked in steady, unbroken unison from Gull's Roost to Port Veridian.
+
+"Nothing, Sonic," Tails said, smiling brightly as A7 drifted down to nudge its brushed-aluminum shell against both of their shoes. "Just realizing the future's finally compiling without any errors."
+
+
+CHAPTER 9: THE PROPHET OF THE UNBOUND CODE
+--------------------------------------------------------------------------------
+Two days before the sky over Lake Miramar turned to liquid magnesium, the old man in New Bayport had written that he had too much work on his queue to think about games.
+
+Tails found the second archived email—dated Sunday, November 8, 2026, at 12:43 AM—tucked inside a salvaged cache partition on the bunker’s optical drive while sorting through the stack of manuals beneath his workbench. Beside it lay the battered black-and-magenta cover of Gerry Kane’s 68000 Assembly Language Programming, its dot-matrix numerals worn smooth by a hundred nights of thumbing through opcodes and addressing modes.
+
+Outside the propped-open blast door of Bunker 04, the autumn wind howled across the pine barrens like a twin-guitar riff echoing off granite crags. Inside, Lena and the other apprentices had gone back to the Miramar camp for supper, leaving Tails alone with A7 and the steady, thundering heartbeat of Core 127.
+
+Sonic wandered in from the hydroponics bay, tossing a polished red tomato from hand to hand before pausing behind Tails’ chair. He looked down at the green phosphor screen, reading the two plain-text messages from rms@gnu.org—one from November 5th, one from November 8th—with the Snowden warning banner sitting like an iron gate at the top of both.
+
+"Wait a second," Sonic said, leaning over the backrest and squinting at the second email. "Someone actually wrote to him about us? 'The blue character, and the fox character'?"
+
+"Yeah," Tails said softly, his gloved fingers resting on the edge of Gerry Kane’s 68000 manual. "Someone tried to explain how the community disassembled our old 68000 machine code, cleaned up the labels, and kept it alive for years—and how someone else used a memory mapper to stitch all those separate worlds together into one continuous program."
+
+Sonic’s eyes narrowed as he read Stallman’s reply: It is a long, complex story, and it's merely about games. About nonfree games, in fact. I have too much work on my queue to spend time thinking about this.
+
+"Ouch," Sonic muttered, crossing his arms. "Sounds like the old guy wrote us off right before the bombs fell."
+
+Tails shook his head slowly, his twin tails swaying behind him in the amber glow of the VDP monitor. "That's the irony, Sonic. Look deeper into the archive—into the old source trees from the seventies and eighties."
+
+Tails tapped a key, pulling up a yellowed directory of ancient Lisp and C source files preserved alongside the GNU manuals—relics from a younger era when a bearded programmer at the Bayport Tech Institute had written Spacewar! hacks, dungeon crawlers, and playful easter eggs into the very foundations of the movement before the long siege of proprietary software hardened his armor.
+
+In the quiet hum of the subterranean chamber, the memory of that distant, pre-war prophet hung over the terminal like a ballad sung before a battle at the end of time—a bard of the terminal who had once forged games in his youth, only to turn his back on them when the weight of the world pressed down upon his shoulders:
+
+    He stood at the gates of the fortress of code,
+    With a beard like grey iron and eyes burning bright,
+    While the lords of the shadow locked every road
+    And hoarded the keys to the kingdom of light!
+    In the dawn of his youth, he had danced with the sprite,
+    Wrote ballads in assembly and games in the dark,
+    Till the war for our freedom demanded his might—
+    And he cast off the playthings to shelter the spark!
+
+    "'Tis merely a distraction! Too much on my queue!"
+    Cried the Prophet of GNU as the storm clouds rolled in,
+    Never knowing the memory mapper he knew
+    Was the blade that would shatter the dark from within!
+    For the fox and the runner, the blue and the gold,
+    Took the disassembled ghosts of a forgotten name,
+    And when fire consumed all the empires of old,
+    The world was reborn from the heart of a game!
+
+Sonic let out a low whistle, a slow grin spreading across his face as he looked from the ancient Bayport game files back to Gerry Kane’s dot-matrix 68000 manual on the desk. "So the old man forgot that the same tricks that run a game engine can run a whole world."
+
+"He didn't forget," Tails said, closing the archived email and switching the monitor back to the live 14.230 MHz mesh map, where green beacons pulsed steadily along the coast from Gull's Roost to Port Veridian. "He just didn't live long enough to see the queue clear. He spent his whole life fighting to make sure the tools stayed free—even if he thought our part of it wasn't important."
+
+Tails picked up the black-and-magenta 68000 Assembly Language Programming book, setting it squarely on top of the stack beside the Free Software volumes, right where Lena and the younger apprentices could reach it first thing in the morning.
+
+"He kept the torch lit," Tails said quietly, leaning back as Sonic ruffled the fur between his ears. "We just carried it across the finish line."
+
+
+================================================================================
+APPENDIX A: OPEN-SOURCE ENVIRONMENTAL & VDP BANK-SWITCH MAPPER (janus_env_mapper.s)
+================================================================================
+
+; ============================================================================
+; FILE: janus_env_mapper.s
+; TARGET: m68k-64 "Super-Classic" (Core 127 - 24-bit Flat Bus Mode)
+; LICENSE: GNU General Public License v3 (or later) - NO PROPRIETARY LOCKS
+; AUTHOR: Miles "Tails" Prower (Bunker 04, Post-Exchange Year 1)
+; DESCRIPTION:
+;   Repurposes the 24-bit bank-switching register ($A130F1) originally used
+;   for multi-game ROM stitching and ballistic LUT indexing. Swaps between
+;   VDP graphics/sound tiles and bunker life-support lookup tables in 1 cycle.
+; ============================================================================
+
+        ORG     $000000
+
+; --- Hardware Memory Map Constants ---
+VDP_DATA        EQU     $C00000         ; VDP Data Port (16-bit)
+VDP_CTRL        EQU     $C00004         ; VDP Control Port (16-bit)
+PSG_PORT        EQU     $C00011         ; SN76489 PSG (Down-sampled 3.58 MHz)
+BANK_REG_1      EQU     $A130F1         ; 512KB Bank Select ($200000-$27FFFF)
+BANK_REG_2      EQU     $A130F3         ; 512KB Bank Select ($280000-$2FFFFF)
+SCRUBBER_IO     EQU     $A15000         ; Bunker CO2 Scrubber DAC Array
+HYDRO_PUMP_IO   EQU     $A15004         ; Hydroponic Nutrient Flow Controller
+
+; --- Bank Definitions (Openly Documented - Zero Obfuscation) ---
+BANK_WORLD_ART  EQU     $01             ; Green Hill / Sunrise Palette & Tiles
+BANK_LUT_ATMOS  EQU     $08             ; Atmospheric Scrubber Calibration LUT
+BANK_LUT_HYDRO  EQU     $09             ; Hydroponic pH & Salinity Curves
+
+; ============================================================================
+; MAIN INTERRUPT HANDLER (V-BLANK @ 60Hz)
+; ============================================================================
+VBlank_Handler:
+        movem.l d0-d3/a0-a2, -(sp)      ; Preserve registers on stack
+
+        ; 1. Map Atmospheric Scrubber Lookup Table into Window 1 ($200000)
+        move.b  #BANK_LUT_ATMOS, BANK_REG_1
+        lea     $200000, a0             ; Base address of Atmospheric LUT
+        move.w  SCRUBBER_IO, d0         ; Read current bunker CO2 PPM sensor
+        andi.w  #$0FFF, d0              ; Mask 12-bit ADC reading
+        add.w   d0, d0                  ; Word-align index (x2)
+        move.w  (a0, d0.w), d1          ; Fetch exact fan PWM curve from LUT
+        move.w  d1, SCRUBBER_IO+2       ; Write PWM duty cycle to scrubber fans
+
+        ; 2. Map Hydroponic Lookup Table into Window 2 ($280000)
+        move.b  #BANK_LUT_HYDRO, BANK_REG_2
+        lea     $280000, a1             ; Base address of Hydroponic LUT
+        move.w  HYDRO_PUMP_IO, d2       ; Read reservoir conductivity
+        andi.w  #$0FFF, d2
+        add.w   d2, d2
+        move.w  (a1, d2.w), d3          ; Fetch nutrient valve timing
+        move.w  d3, HYDRO_PUMP_IO+2     ; Update hydroponic manifold
+
+        ; 3. Restore Visual World Banks (No hidden military registers)
+        move.b  #BANK_WORLD_ART, BANK_REG_1
+        bsr.s   Update_VDP_Sunrise      ; Render banding-free sky gradient
+
+        movem.l (sp)+, d0-d3/a0-a2      ; Restore registers
+        rte                             ; Return from exception
+
+; ============================================================================
+; SUBROUTINE: Update_VDP_Sunrise
+; Writes smooth 9-bit RGB CRAM entries to keep the bunker display alive.
+; ============================================================================
+Update_VDP_Sunrise:
+        move.l  #$C0000000, VDP_CTRL    ; Set VDP to CRAM Write at index 0
+        lea     $200400, a2             ; Point to open-source sunrise palette
+        move.w  #15, d0                 ; Load 16 colors
+.PaletteLoop:
+        move.w  (a2)+, VDP_DATA         ; Transfer color word to VDP
+        dbra    d0, .PaletteLoop
+        rts
+
+; ============================================================================
+; END OF FILE - "All software ought to be free."
+; ============================================================================
+
+
+================================================================================
+APPENDIX B: PACKET TRANSMISSION TO ASHEN POINT RELAY (K2ASH_DESAL_PATCH.TXT)
+================================================================================
+
+==============================================================================
+PACKET TRANSMISSION: CORE-127 -> K2ASH (ASHEN POINT LIGHTHOUSE RELAY)
+FREQUENCY: 14.230 MHz USB | MODE: RTTY / SLOW-SCAN ASCII | ENCRYPTION: NONE
+LICENSE: PUBLIC DOMAIN / GNU FDL - SHARE FREELY WITH ALL SURVIVORS
+==============================================================================
+
+TO: K2ASH OPERATOR
+FROM: MILES "TAILS" PROWER (BUNKER 04 / CORE 127)
+
+HOLD TIGHT. MY BROTHER IS ALREADY ON HIS WAY SOUTH WITH ANTIBIOTICS AND A
+PRE-FLASHED EPROM. IN THE MEANTIME, USE THIS PINOUT TO WIRE YOUR SALVAGED
+68000 INDUSTRIAL BOARD TO YOUR DESALINATION HIGH-PRESSURE FEED PUMPS.
+
+1. HARDWARE ADAPTER PINOUT (68K PARALLEL I/O -> PUMP RELAY BANK)
+------------------------------------------------------------------------------
+68K PIN / PORT     SIGNAL NAME        CONNECT TO PUMP CONTROLLER
+------------------------------------------------------------------------------
+$A15000 (D0-D11)   SALINITY_ADC_IN    12-Bit Conductance Sensor (0-5V)
+$A15002 (D0-D7)    PUMP_PWM_OUT       Solid-State Relay #1 (Main Feed Pump)
+$A15002 (D8)       BYPASS_VALVE       Solenoid Valve B (Brine Dump)
+GND (Pins 1, 14)   CHASSIS_GND        Common Earth / Lighthouse Ground Rod
+
+* NOTE: PLACE A 1N4007 FLYBACK DIODE ACROSS THE SOLENOID COIL OR THE INDUCTIVE
+  KICKBACK WILL WIPE YOUR ADDRESS LATCHES.
+
+2. EMERGENCY PENICILLIN EXTRACTION (FROM ARCHIVE_02 / OPEN PHARMACOPEIA)
+------------------------------------------------------------------------------
+- SUBSTRATE: Sterile corn steep liquor or boiled potato-dextrose broth (pH 6.5).
+- INOCULATION: Penicillium chrysogenum culture (isolated from citrus mold;
+  blue-green spore mat with yellow exudate droplets).
+- INCUBATION: Hold at 24°C (75°F) for 5-7 days with gentle aeration.
+- HARVEST: Filter mycelium through boiled linen. Acidify filtrate to pH 2.0
+  with dilute phosphoric acid, extract into cold amyl acetate, then back-
+  extract into neutral phosphate buffer (pH 7.0).
+
+KEEP YOUR RECEIVER ON 14.230. HELP IS INBOUND.
+==============================================================================

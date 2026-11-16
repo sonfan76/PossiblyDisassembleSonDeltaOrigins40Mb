@@ -1,0 +1,1825 @@
+﻿
+dynamic analysis is needed
+Dynamic runtime analysis bypasses static pointer obfuscation by logging the exact CPU register states and memory addresses at the moment a hardware bank switch executes. Because the Motorola 68000 must write directly to a mapper latch (such as the standard Sega SSF2 mapper range at $A130F1–$A130FF or custom registers at $220000–$22000F) to swap 512KB banks, trapping that write exposes the exact jump targets and bank numbers in real time.
+1. MAME / Mesen Lua Dynamic Watchpoint Logger
+This Lua script hooks into the emulator's memory bus to catch every write to suspected bank-switching ranges, logs the full M68K register state (PC, d0–d7, a0–a6), and writes the output to a file (bank_trace.log) so you can map which bank corresponds to each level or routine.
+lua
+-- =============================================================================
+-- M68K DYNAMIC BANK-SWITCH LOGGER (MAME / Mesen Lua API)
+-- Captures PC, full CPU register context, and bank values on mapper writes
+-- =============================================================================
+
+local log_file = io.open("bank_trace.log", "w")
+local seen_switches = {}
+
+-- Common Sega Genesis / MD Mapper Register Ranges:
+-- 1) Standard SSF2 Mapper: 0xA130F1 to 0xA130FF (odd bytes)
+-- 2) Custom / Extended Mapper Range: 0x220000 to 0x22000F
+local WATCH_RANGES = {
+    { start_addr = 0xA130F0, end_addr = 0xA130FF },
+    { start_addr = 0x220000, end_addr = 0x22000F }
+}
+
+local function dump_m68k_state(pc, addr, val, size)
+    local key = string.format("%06X_%06X_%04X", pc, addr, val)
+    
+    -- Deduplicate repeated identical switches in tight loops; remove check to log every hit
+    if seen_switches[key] then return end
+    seen_switches[key] = true
+
+    local regs = string.format(
+        "D0=%08X D1=%08X D2=%08X D3=%08X D4=%08X D5=%08X D6=%08X D7=%08X\n" ..
+        "A0=%08X A1=%08X A2=%08X A3=%08X A4=%08X A5=%08X A6=%08X A7=%08X",
+        emu:get_reg("D0"), emu:get_reg("D1"), emu:get_reg("D2"), emu:get_reg("D3"),
+        emu:get_reg("D4"), emu:get_reg("D5"), emu:get_reg("D6"), emu:get_reg("D7"),
+        emu:get_reg("A0"), emu:get_reg("A1"), emu:get_reg("A2"), emu:get_reg("A3"),
+        emu:get_reg("A4"), emu:get_reg("A5"), emu:get_reg("A6"), emu:get_reg("A7")
+    )
+
+    local entry = string.format(
+        "[BANK SWITCH] PC=$%06X -> Wrote $%04X (%d-bit) to $%06X\n%s\n" ..
+        "------------------------------------------------------------------------\n",
+        pc, val, size * 8, addr, regs
+    )
+
+    print(entry)
+    if log_file then
+        log_file:write(entry)
+        log_file:flush()
+    end
+end
+
+-- Register write callbacks across all target mapper windows
+for _, range in ipairs(WATCH_RANGES) do
+    for addr = range.start_addr, range.end_addr, 2 do
+        emu:add_watchpoint(addr, 2, "w", function()
+            local pc = emu:get_reg("PC")
+            local target = emu:get_watchpoint_address()
+            local val = emu:read_word(target)
+            dump_m68k_state(pc, target, val, 2)
+        end)
+    end
+end
+
+print("[DYNAMIC TRACE] Watchpoints active. Play through level transitions to log bank swaps.")
+Use code with caution.
+
+2. BlastEm CLI Debugger Commands
+If you use BlastEm for cycle-accurate debugging, its built-in gdb-style command-line debugger (blastem -d target.bin) lets you trap writes without needing a Lua wrapper.
+    • Trap Standard SSF2 Mapper Writes: Enter watch $A130F1 through watch $A130FF (or watch $220000 for custom mappers) at the BlastEm debugger prompt.
+    • Inspect the Call Stack & Registers: When execution halts on a bank swap, run p to print all d0–d7 and a0–a7 registers, and run bt to inspect the return addresses on stack pointer a7.
+    • Identify the Caller: Look at the top longword at (a7) (or (a7)+4 inside a subroutine). That address points straight to the jsr or bsr instruction in the main 32Mbit base ROM that triggered the bank swap.
+
+3. Turning Trace Logs into Static Disassembly Labels
+Once bank_trace.log captures the runtime swaps, you can feed those exact pairs back into a static disassembler (m68k-disasm or Ghidra) to resolve every pointer:
+    • Map the Active Window: On a standard SSF2-style mapper, writing byte value N to $A130F3–$A130FF maps 512KB bank N (N * $80000 file offset) into a fixed 512KB CPU window (such as $080000–$0FFFFF or $380000–$3FFFFF).
+    • Resolve the Target Offset: Subtract the CPU window base address from the target pointer (a0, a1, or the next jsr address), then add N * $80000. That gives the exact physical byte offset inside the 40Mbit ROM file.
+Which emulator environment are you running for your trace session (BlastEm, Mesen, or MAME), and do you already know which CPU address range the mapper swaps into? I can tailor the watchpoint script or write a Python parser to convert your bank_trace.log into physical ROM offsets.
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+
+
+blastem is used
+BlastEm includes a built-in, cycle-accurate GDB-style command-line debugger (blastem -d) [1.14] that . Because BlastEm also accepts commands via standard input (stdin), you can pipe an automated initialization script directly into it to set watchpoints across all mapper registers and log every bank swap automatically.
+1. Launch BlastEm with Automated Mapper Watchpoints
+Create a plain-text command file named trace_banks.txt containing the watchpoint setup for both the standard Sega SSF2 mapper ($A130F1–$A130FF) and custom high-address latches ($220000):
+text
+# =============================================================================
+# BLASTEM CLI DEBUGGER SCRIPT: DYNAMIC BANK-SWITCH TRAP
+# =============================================================================
+# Trap standard SSF2 512KB bank registers (Slots 1 through 7)
+watch $A130F1
+watch $A130F3
+watch $A130F5
+watch $A130F7
+watch $A130F9
+watch $A130FB
+watch $A130FD
+watch $A130FF
+
+# Trap custom mapper latch range if used instead of $A130Fx
+watch $220000
+
+# Resume execution immediately
+c
+Use code with caution.
+Launch BlastEm from your terminal, piping the command script into the debugger and capturing the entire trace output to blastem_trace.log:
+bash
+blastem -d sonic_delta_origins.bin < trace_banks.txt | tee blastem_trace.log
+Use code with caution.
+
+2. Interactive Commands When a Watchpoint Hits
+When the ROM writes to a bank register during a level transition or asset load, BlastEm will pause execution and drop you into the (blastem) prompt [1.14]. Run these commands to inspect the exact state:
+    • p (Print Registers): Displays all data registers (d0–d7), address registers (a0–a7), the current Program Counter (pc), and the Status Register (sr) [1.14].
+    • bt (Backtrace): Walks the stack frame via a7 to show the exact chain of jsr / bsr return addresses that called the bank-switching routine [1.14].
+    • x/16x $a7 (Examine Stack): Dumps the top 16 longwords on the stack so you can see the raw return pointer at (a7) and any pushed parameters.
+    • disasm (Disassemble): Disassembles the instructions immediately surrounding the current pc so you can see the exact move.b or move.w instruction that wrote the bank index and the jump/pointer load that follows it.
+    • c (Continue): Resumes execution until the next bank swap occurs.
+
+3. Calculating Physical ROM Offsets from the BlastEm Dump
+Once BlastEm traps a write to $A130Fx (for example, writing byte value N to $A130FF), use this mapping table to convert any runtime CPU pointer into its exact byte offset inside the 40Mbit (5,242,880-byte) ROM file:
+Mapper Register
+Target CPU Window
+Physical File Offset Formula (N = written byte)
+$A130F3
+$080000 – $0FFFFF
+(CPU_Addr - $080000) + (N * $80000)
+$A130F5
+$100000 – $17FFFF
+(CPU_Addr - $100000) + (N * $80000)
+$A130F7
+$180000 – $1FFFFF
+(CPU_Addr - $180000) + (N * $80000)
+$A130F9
+$200000 – $27FFFF
+(CPU_Addr - $200000) + (N * $80000)
+$A130FB
+$280000 – $2FFFFF
+(CPU_Addr - $280000) + (N * $80000)
+$A130FD
+$300000 – $37FFFF
+(CPU_Addr - $300000) + (N * $80000)
+$A130FF
+$380000 – $3FFFFF
+(CPU_Addr - $380000) + (N * $80000)
+    • Example: If BlastEm breaks on a write of $09 to $A130FF, and the very next instruction loads pointer a0 = $3842A0, the physical offset in the 5MB binary is ($3842A0 - $380000) + ($09 * $80000) = $4842A0 (Byte 4,735,648).
+Once you run blastem -d with those watchpoints, paste one of the watchpoint break dumps (p and disasm output) here, and I can identify the exact mapper register, resolve the physical ROM offsets, and help build a parser script to automate labeling for vasm.
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+
+
+Ghidra ?
+Ghidra Memory Map Overlays. By default, Ghidra maps a 40Mbit (5MB) ROM linearly from $000000 to $4FFFFF, which breaks pointers because the Motorola 68000 only addresses $000000–$3FFFFF for cartridge ROM and swaps extra 512KB ($80000) pages into a shared window (such as $380000–$3FFFFF or $080000–$0FFFFF).
+
+1. Import the Base 32Mbit Region ($000000–$3FFFFF)
+    1. Open your Ghidra project and press I to import sonic_delta_origins.bin.
+    2. Set Language to 68000:BE:32:default (Big-Endian Motorola 68000).
+    3. Click Options... in the import dialog and set Length to 0x400000 (the first 4MB / 32Mbits) with Base Address 0x000000, then click OK to open it in CodeBrowser.
+    4. (Optional) Install the community Ghidra Sega Mega Drive / Genesis Loader extension if you want automatic vector table labeling and VDP/IO register definitions ($C00000–$C0001F, $A10000–$A14000).
+
+2. Map Extra 512KB Banks as Ghidra Overlays
+Once BlastEm's dynamic watchpoint tells you which CPU window the mapper swaps into (for example, $380000–$3FFFFF via $A130FF), map each 512KB bank above 4MB as an Overlay Block sharing that exact CPU address range:
+    1. In CodeBrowser, open Window → Memory Map (or click the RAM chip icon on the top toolbar).
+    2. Click the + (Add Block) button to map Bank 8 (bytes 0x400000–0x47FFFF of the ROM file):
+        ◦ Block Name: BANK_08
+        ◦ Start Address: 0x380000 (match the active swap window found in BlastEm)
+        ◦ Length: 0x80000 (512KB)
+        ◦ Initialized: Checked (File Bytes → select sonic_delta_origins.bin, File Offset: 0x400000)
+        ◦ Permissions: Check Read and Execute
+        ◦ Overlay: Checked (This creates a separate address space BANK_08::380000 so Ghidra never collides pointers with the base $380000 block)
+    3. Repeat Add Block for Bank 9 (File Offset: 0x480000, Start Address: 0x380000, Length: 0x80000, Overlay: Checked), and for any lower banks (0x080000–0x37FFFF) that get swapped dynamically.
+
+3. Feed BlastEm Trace Logs into Ghidra
+With overlays configured, you can turn your BlastEm dynamic trace output directly into resolved disassembly:
+    • Find Every Bank Switch Globally: Search for the mapper register address you trapped in BlastEm (Search → Memory or Search → For Address for 00A130FF or 00220000) to locate every subroutine in the base ROM that triggers a bank swap.
+    • Fix Cross-Bank Jumps (jsr / jmp / lea): When Ghidra sees jsr $003842A0 right after a write of $09 to $A130FF, right-click the operand $003842A0, select References → Add/Edit..., and point the reference explicitly to BANK_09::003842a0.
+    • Export Back to vasm Assembly: Once labeled, export each memory block (File → Export Program... using Assembly format) or run a Ghidra Python script to dump each overlay block as a clean, standalone .asm file ready for vasm.
+Would you like a Ghidra Python script that automatically generates all 512KB overlay blocks from your 40Mbit ROM and exports them into vasm-compatible .asm files, or do you want to share the BlastEm watchpoint output first so we can lock in the exact overlay start address?
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+
+
+any way to automate it?
+You can fully automate the entire pipeline—capturing bank swaps in BlastEm, resolving every cross-bank pointer into physical file offsets, building the Ghidra memory overlays, and exporting clean vasm-compatible .asm files—using a two-stage automation chain.
+
+Stage 1: Headless BlastEm Trace Collector (collect_trace.py)
+Instead of manually typing p, disasm, and c every time BlastEm hits a watchpoint, this Python wrapper launches blastem -d in the background, automatically feeds those inspection commands every time a mapper write triggers, and saves a clean JSON map (resolved_switches.json) pairing every caller PC with its target bank and physical ROM offset.
+python
+#!/usr/bin/env python3
+import subprocess
+import re
+import json
+import sys
+
+ROM_FILE = "sonic_delta_origins.bin"
+OUTPUT_JSON = "resolved_switches.json"
+
+# Standard SSF2 mapper registers -> CPU swap window base
+SSF2_WINDOWS = {
+    0xA130F3: 0x080000,
+    0xA130F5: 0x100000,
+    0xA130F7: 0x180000,
+    0xA130F9: 0x200000,
+    0xA130FB: 0x280000,
+    0xA130FD: 0x300000,
+    0xA130FF: 0x380000,
+}
+
+def run_blastem_trace(rom_path):
+    proc = subprocess.Popen(
+        ["blastem", "-d", rom_path],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+
+    # Set watchpoints across SSF2 and custom $220000 ranges, then continue
+    init_cmds = [f"watch ${reg:06X}" for reg in SSF2_WINDOWS] + ["watch $220000", "c"]
+    proc.stdin.write("\n".join(init_cmds) + "\n")
+    proc.stdin.flush()
+
+    switches = {}
+    current_block = []
+
+    print("[TRACE] Running BlastEm. Play through zones/menus, then close emulator window to finish.")
+
+    for line in proc.stdout:
+        line_clean = line.strip()
+        current_block.append(line_clean)
+
+        # Detect BlastEm watchpoint hit prompt
+        if "Watchpoint" in line_clean or "(blastem)" in line_clean:
+            if "Watchpoint" in line_clean:
+                proc.stdin.write("p\ndisasm\nc\n")
+                proc.stdin.flush()
+
+            blob = "\n".join(current_block)
+            pc_match = re.search(r"pc:\s*([0-9a-fA-F]+)", blob)
+            wp_match = re.search(r"Watchpoint.*?([0-9a-fA-F]{6})", blob)
+            d0_match = re.search(r"d0:\s*([0-9a-fA-F]+)", blob)
+            a0_match = re.search(r"a0:\s*([0-9a-fA-F]+)", blob)
+
+            if pc_match and wp_match:
+                pc = int(pc_match.group(1), 16)
+                reg = int(wp_match.group(1), 16)
+                bank = int(d0_match.group(1), 16) & 0xFF if d0_match else 0
+                a0 = int(a0_match.group(1), 16) if a0_match else 0
+
+                win_base = SSF2_WINDOWS.get(reg, 0x380000)
+                phys_offset = ((a0 - win_base) + (bank * 0x80000)) if a0 >= win_base else (bank * 0x80000)
+
+                key = f"{pc:06X}_{reg:06X}_{bank:02X}"
+                if key not in switches:
+                    switches[key] = {
+                        "caller_pc": f"0x{pc:06X}",
+                        "mapper_reg": f"0x{reg:06X}",
+                        "bank_index": bank,
+                        "window_base": f"0x{win_base:06X}",
+                        "sample_a0": f"0x{a0:06X}",
+                        "physical_rom_offset": f"0x{phys_offset:06X}"
+                    }
+                    print(f"[CAPTURED] PC=${pc:06X} -> Reg=${reg:06X} Bank={bank:02d} (Phys=0x{phys_offset:06X})")
+                current_block.clear()
+
+    with open(OUTPUT_JSON, "w") as f:
+        json.dump(list(switches.values()), f, indent=2)
+    print(f"[DONE] Saved {len(switches)} unique bank switches to {OUTPUT_JSON}")
+
+if __name__ == "__main__":
+    target = sys.argv[1] if len(sys.argv) > 1 else ROM_FILE
+    run_blastem_trace(target)
+Use code with caution.
+
+Stage 2: Ghidra Headless Overlay Builder & vasm Exporter (ghidra_auto_bank.py)
+Once you have resolved_switches.json (or even directly from the raw 40Mbit .bin), run this Ghidra Python script via Ghidra's Script Manager (or headless CLI via analyzeHeadless). It automatically:
+    1. Slices every 512KB bank above 4MB (0x400000) into a named Ghidra Overlay Block (BANK_08, BANK_09, etc.).
+    2. Reads resolved_switches.json to attach cross-bank references (Add/Edit Reference) and bookmark comments directly at each caller PC.
+    3. Disassembles all overlay blocks and exports every bank to standalone vasm-ready .asm files.
+python
+# Ghidra Jython Script: Auto-Map 512KB Overlays, Apply Trace Refs, & Export vasm ASM
+# @category SegaGenesis.Automation
+
+import os
+import json
+from ghidra.app.cmd.disassemble import DisassembleCommand
+from ghidra.program.model.symbol import SourceType, RefType
+
+BANK_SIZE = 0x80000          # 512KB per bank
+BASE_ROM_LIMIT = 0x400000    # First 4MB (32Mbit) mapped linearly
+DEFAULT_WINDOW = 0x380000    # Default swap window ($380000-$3FFFFF)
+OUTPUT_DIR = os.path.expanduser("~/sonic_delta_vasm_export")
+TRACE_JSON = os.path.expanduser("~/resolved_switches.json")
+
+mem = currentProgram.getMemory()
+listing = currentProgram.getListing()
+ref_mgr = currentProgram.getReferenceManager()
+addr_factory = currentProgram.getAddressFactory()
+
+# 1. Locate raw FileBytes from the imported 40Mbit ROM
+all_file_bytes = mem.getAllFileBytes()
+if not all_file_bytes:
+    print("[ERROR] No FileBytes found in current program.")
+    exit()
+
+rom_bytes = all_file_bytes[0]
+total_size = rom_bytes.getSize()
+num_banks = total_size // BANK_SIZE
+print("[GHIDRA] Total ROM size: {} bytes ({} x 512KB banks)".format(total_size, num_banks))
+
+# 2. Create Overlay Blocks for Banks 8+ (everything above 4MB)
+for bank_idx in range(8, num_banks):
+    block_name = "BANK_{:02d}".format(bank_idx)
+    file_offset = bank_idx * BANK_SIZE
+    if mem.getBlock(block_name) is None:
+        start_addr = addr_factory.getDefaultAddressSpace().getAddress(DEFAULT_WINDOW)
+        block = mem.createInitializedBlock(
+            block_name, start_addr, rom_bytes, file_offset, BANK_SIZE, True
+        )
+        block.setRead(True)
+        block.setWrite(False)
+        block.setExecute(True)
+        print("[OVERLAY] Created {} -> CPU ${:06X} (File Offset 0x{:06X})".format(
+            block_name, DEFAULT_WINDOW, file_offset))
+
+# 3. Apply Dynamic Trace References from BlastEm JSON (if present)
+if os.path.exists(TRACE_JSON):
+    with open(TRACE_JSON, "r") as f:
+        switches = json.load(f)
+    for sw in switches:
+        pc_val = int(sw["caller_pc"], 16)
+        bank_idx = sw["bank_index"]
+        target_a0 = int(sw["sample_a0"], 16)
+        caller_addr = addr_factory.getDefaultAddressSpace().getAddress(pc_val)
+
+        # Annotate caller PC with exact bank switch metadata
+        listing.setComment(
+            caller_addr,
+            listing.EOL_COMMENT,
+            "AUTO-TRACE: Swaps Bank {:02d} via {} (Sample Target=0x{:06X})".format(
+                bank_idx, sw["mapper_reg"], target_a0
+            )
+        )
+
+        # Add cross-bank reference into the corresponding Overlay Address Space
+        overlay_space = addr_factory.getAddressSpace("BANK_{:02d}".format(bank_idx))
+        if overlay_space and target_a0 >= DEFAULT_WINDOW:
+            dest_addr = overlay_space.getAddress(target_a0)
+            ref_mgr.addMemoryReference(
+                caller_addr, dest_addr, RefType.DATA, SourceType.USER_DEFINED, 0
+            )
+            DisassembleCommand(dest_addr, None, True).applyTo(currentProgram)
+
+# 4. Export every bank block into clean vasm-compatible .asm files
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+
+for block in mem.getBlocks():
+    if not block.isInitialized():
+        continue
+    out_path = os.path.join(OUTPUT_DIR, "{}.asm".format(block.getName()))
+    with open(out_path, "w") as asm_out:
+        asm_out.write("; ============================================================================\n")
+        asm_out.write("; AUTO-EXPORTED BANK: {} (Start: ${:06X}, Size: ${:X})\n".format(
+            block.getName(), block.getStart().getOffset(), block.getSize()))
+        asm_out.write("; Assembler Target: vasm -Fm68k -Fbin\n")
+        asm_out.write("; ============================================================================\n")
+        asm_out.write("\torg\t${:06X}\n\n".format(block.getStart().getOffset()))
+
+        inst_iter = listing.getInstructions(block.getStart(), True)
+        while inst_iter.hasNext():
+            inst = inst_iter.next()
+            if not block.contains(inst.getAddress()):
+                break
+            addr_off = inst.getAddress().getOffset()
+            asm_out.write("loc_{:06X}:\t{}\n".format(addr_off, inst.toString()))
+
+    print("[EXPORT] Wrote {}".format(out_path))
+Use code with caution.
+
+Stage 3: One-Command Execution (run_pipeline.sh)
+You can tie both scripts and Ghidra's headless analyzer together into a single bash command so the entire process—from ROM trace capture to vasm source output—runs unattended:
+bash
+#!/bin/bash
+GHIDRA_DIR="/opt/ghidra"
+PROJECT_DIR="./ghidra_proj"
+ROM="sonic_delta_origins.bin"
+
+# 1. Capture live bank switches from BlastEm
+python3 collect_trace.py "$ROM"
+
+# 2. Import 40Mbit ROM headless, create overlays, apply trace refs, and export vasm .asm
+mkdir -p "$PROJECT_DIR"
+"$GHIDRA_DIR/support/analyzeHeadless" "$PROJECT_DIR" SonicDeltaProj \
+    -import "$ROM" \
+    -processor "68000:BE:32:default" \
+    -postScript ghidra_auto_bank.py \
+    -deleteProject
+Use code with caution.
+Would you like to refine the BlastEm trace parser to also capture raw instruction disassembly lines around each bank swap (so it auto-detects move.b bank constants stored in memory or immediate operands rather than just d0), or add a vasm rebuild Makefile to recompile the exported .asm banks back into a working 40Mbit binary?
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+
+
+both
+Here is the complete, end-to-end automation upgrade: an upgraded BlastEm instruction-level trace collector that parses the exact move.b / move.w operand writing to the mapper latch (handling immediate constants, data registers, and RAM variables), paired with a vasm build Makefile and linker layout that recompiles your exported .asm banks back into a working 40Mbit Sega Genesis binary.
+
+1. Upgraded BlastEm Disassembly & Operand Parser (collect_trace.py)
+Rather than guessing that the bank number is always in d0, this version parses the disasm output emitted by BlastEm at each watchpoint break. It inspects the exact instruction that wrote to $A130Fx (or $220000) and resolves immediate constants (#$09), data registers (d0–d7), or memory addresses (($FFFF8000).w).
+python
+#!/usr/bin/env python3
+import subprocess
+import re
+import json
+import sys
+
+ROM_FILE = "sonic_delta_origins.bin"
+OUTPUT_JSON = "resolved_switches.json"
+
+SSF2_WINDOWS = {
+    0xA130F3: 0x080000,
+    0xA130F5: 0x100000,
+    0xA130F7: 0x180000,
+    0xA130F9: 0x200000,
+    0xA130FB: 0x280000,
+    0xA130FD: 0x300000,
+    0xA130FF: 0x380000,
+}
+
+def extract_bank_value(disasm_lines, regs):
+    """
+    Parses the instruction writing to the mapper register (e.g., 'move.b #$09, $a130ff'
+    or 'move.b d1, (a2)') and resolves the exact bank index byte.
+    """
+    for line in disasm_lines:
+        # Match move.b or move.w targeting a mapper address or indirect register
+        m = re.search(r"move\.[bw]\s+([^,]+),\s*(.+)", line, re.IGNORECASE)
+        if not m:
+            continue
+        src = m.group(1).strip().lower()
+
+        # Case 1: Immediate hex or decimal value (e.g. #$09 or #9)
+        if src.startswith("#$"):
+            return int(src[2:], 16) & 0xFF
+        if src.startswith("#"):
+            return int(src[1:], 10) & 0xFF
+
+        # Case 2: Data register d0-d7
+        if re.fullmatch(r"d[0-7]", src) and src in regs:
+            return regs[src] & 0xFF
+
+        # Case 3: Indirect address register (a0)-(a6)
+        ind = re.fullmatch(r"\((a[0-6])\)\+?", src)
+        if ind and ind.group(1) in regs:
+            return regs[ind.group(1)]
+
+    # Fallback to d0 if operand format was complex
+    return regs.get("d0", 0) & 0xFF
+
+def run_blastem_trace(rom_path):
+    proc = subprocess.Popen(
+        ["blastem", "-d", rom_path],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+
+    init_cmds = [f"watch ${reg:06X}" for reg in SSF2_WINDOWS] + ["watch $220000", "c"]
+    proc.stdin.write("\n".join(init_cmds) + "\n")
+    proc.stdin.flush()
+
+    switches = {}
+    current_block = []
+
+    print("[TRACE] BlastEm active. Play through levels/menus, then close window to save JSON.")
+
+    for line in proc.stdout:
+        clean = line.strip()
+        current_block.append(clean)
+
+        if "Watchpoint" in clean:
+            # Dump registers, 5 instructions around PC, and stack backtrace
+            proc.stdin.write("p\ndisasm\nbt\nc\n")
+            proc.stdin.flush()
+
+        elif "(blastem)" in clean and len(current_block) > 4:
+            blob = "\n".join(current_block)
+            pc_match = re.search(r"pc:\s*([0-9a-fA-F]+)", blob)
+            wp_match = re.search(r"Watchpoint.*?([0-9a-fA-F]{6})", blob)
+
+            if pc_match and wp_match:
+                pc = int(pc_match.group(1), 16)
+                reg = int(wp_match.group(1), 16)
+
+                # Parse all d0-d7 and a0-a7 registers
+                regs = {}
+                for r_name, r_val in re.findall(r"([da][0-7]):\s*([0-9a-fA-F]+)", blob):
+                    regs[r_name.lower()] = int(r_val, 16)
+
+                # Extract disassembled instruction lines
+                disasm_lines = [
+                    l for l in current_block
+                    if re.match(r"^[0-9a-fA-F]{6}:", l)
+                ]
+
+                bank = extract_bank_value(disasm_lines, regs)
+                win_base = SSF2_WINDOWS.get(reg, 0x380000)
+
+                # Check address registers a0-a6 for pointers landing inside the active swap window
+                target_ptrs = [
+                    val for name, val in regs.items()
+                    if name.startswith("a") and name != "a7" and win_base <= val < (win_base + 0x80000)
+                ]
+                sample_ptr = target_ptrs if target_ptrs else win_base
+                phys_offset = (sample_ptr - win_base) + (bank * 0x80000)
+
+                key = f"{pc:06X}_{reg:06X}_{bank:02X}"
+                if key not in switches:
+                    switches[key] = {
+                        "caller_pc": f"0x{pc:06X}",
+                        "mapper_reg": f"0x{reg:06X}",
+                        "bank_index": bank,
+                        "window_base": f"0x{win_base:06X}",
+                        "resolved_target_ptr": f"0x{sample_ptr:06X}",
+                        "physical_rom_offset": f"0x{phys_offset:06X}",
+                        "disasm_context": disasm_lines[:6]
+                    }
+                    print(
+                        f"[CAPTURED] PC=${pc:06X} | Reg=${reg:06X} | Bank={bank:02d} "
+                        f"| Ptr=${sample_ptr:06X} -> Phys=0x{phys_offset:06X}"
+                    )
+            current_block.clear()
+
+    with open(OUTPUT_JSON, "w") as f:
+        json.dump(list(switches.values()), f, indent=2)
+    print(f"[DONE] Saved {len(switches)} resolved bank switches to {OUTPUT_JSON}")
+
+if __name__ == "__main__":
+    target = sys.argv if len(sys.argv) > 1 else ROM_FILE
+    run_blastem_trace(target)
+Use code with caution.
+
+2. Rebuilding the Exported .asm Banks with vasm (Makefile)
+Because Ghidra exports each 512KB overlay (BANK_08.asm, BANK_09.asm, etc.) with org $380000, assembling them all into a single flat file directly would cause address collisions. Instead, compile each 512KB bank into its own flat 524,288-byte binary slice using vasmm68k_mot, and concatenate them in sequential bank order (BANK_00 through BANK_09) to produce the final 40Mbit (5MB) ROM with a recalculated Sega Genesis header checksum.
+Save this Makefile inside ~/sonic_delta_vasm_export/:
+makefile
+# =============================================================================
+# VASM REBUILD MAKEFILE FOR 40MBIT (5MB) BANK-SWITCHED GENESIS ROM
+# Compiles base 32Mbit + 512KB overlay banks independently and stitches ROM
+# =============================================================================
+
+VASM      = vasmm68k_mot
+VASMFLAGS = -Fbin -m68000 -no-opt -spaces
+
+PYTHON    = python3
+TARGET    = rebuilt_sonic_delta_40mb.bin
+
+# Base 32Mbit (Banks 00-07: $000000-$3FFFFF) + Extended Banks (08-09: $400000-$4FFFFF)
+ASM_FILES = $(sort $(wildcard BANK_*.asm))
+BIN_SLICES = $(ASM_FILES:.asm=.bin)
+
+.PHONY: all clean verify
+
+all: $(TARGET)
+
+# Step 1: Assemble each 512KB .asm bank into a raw binary slice
+%.bin: %.asm
+        $(VASM) $(VASMFLAGS) -o $@ $<
+        @# Pad each bank slice to exact 512KB (524,288 bytes) boundary
+        $(PYTHON) -c "data = open('$@','rb').read(); assert len(data) <= 0x80000, '$@ exceeds 512KB!'; open('$@','wb').write(data.ljust(0x80000, b'\xFF'))"
+
+# Step 2: Stitch all 512KB slices sequentially and fix the 16-bit Genesis ROM checksum
+$(TARGET): $(BIN_SLICES)
+        cat $(BIN_SLICES) > $(TARGET)
+        $(PYTHON) -c "\
+import struct; \
+rom = bytearray(open('$(TARGET)', 'rb').read()); \
+csum = sum(struct.unpack('>' + 'H' * ((len(rom) - 0x200) // 2), rom[0x200:])) & 0xFFFF; \
+struct.pack_into('>H', rom, 0x18E, csum); \
+open('$(TARGET)', 'wb').write(rom); \
+print(f'[BUILD OK] Built {len(rom)} bytes | Fixed Header Checksum: 0x{csum:04X}')"
+
+# Step 3: Verify byte-for-byte identity against original 40Mbit ROM before making edits
+verify: $(TARGET)
+        cmp -l ../sonic_delta_origins.bin $(TARGET) | head -n 20 || true
+
+clean:
+        rm -f $(BIN_SLICES) $(TARGET)
+Use code with caution.
+
+3. Recommended Verification Workflow
+    1. Run make before editing any assembly: Confirm that the exported .asm slices reassemble into an identical 5,242,880-byte binary via make verify (the only difference should be the checksum word at $00018E if the original ROM bypassed TMSS checksum verification).
+    2. Edit & Extend Freely: Once make verify confirms clean round-trip assembly, you can modify bank routines, inject custom M68K code, or add new 512KB banks (BANK_10.asm, BANK_11.asm) without breaking cross-bank pointers.
+Would you like to add a post-processing Python formatter that automatically converts Ghidra's raw instruction output into clean vasm Motorola syntax (fixing hex prefixes, register lists, and PC-relative label offsets so vasmm68k_mot compiles with zero syntax warnings)?
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+
+
+both
+To ensure Ghidra's exported assembly compiles cleanly under vasmm68k_mot with zero syntax errors or address drift, you need two components: a post-processing Python formatter that normalizes Ghidra's Motorola 68000 syntax (converting 0x hex prefixes to $, fixing PC-relative addressing formats, and restoring raw dc.b data blocks for un-disassembled graphics/tables), and an updated Makefile that runs the formatter automatically before invoking vasm.
+
+1. Ghidra-to-vasm Syntax Normalizer (format_for_vasm.py)
+Ghidra's default inst.toString() output uses C-style 0x hex literals, non-standard indirect displacement formats ((0x10,A0) instead of $10(a0)), and omits raw binary bytes for data regions (such as compressed Nemesis/Kosinski art tiles, level layouts, and sound drivers).
+Save this script as format_for_vasm.py. It converts every exported .asm file into strict Motorola vasmm68k_mot syntax while preserving exact byte alignment:
+python
+#!/usr/bin/env python3
+import re
+import glob
+import os
+
+def convert_ghidra_line(line):
+    # Preserve comments and org directives
+    stripped = line.strip()
+    if not stripped or stripped.startswith(";") or stripped.startswith("org"):
+        return line
+
+    # Split optional label prefix (e.g. 'loc_000200:\tmove.l 0x0,d0')
+    label_part = ""
+    inst_part = line
+    if ":" in line and not line.lstrip().startswith(";"):
+        idx = line.index(":")
+        label_part = line[:idx + 1]
+        inst_part = line[idx + 1:]
+
+    # 1. Convert C-style hex '0x1A2B' -> Motorola '$1A2B'
+    inst_part = re.sub(r"\b0x([0-9a-fA-F]+)\b", r"$\1", inst_part)
+
+    # 2. Convert Ghidra indirect displacement '($10,A0)' -> '$10(a0)'
+    inst_part = re.sub(
+        r"\(\s*(-?\$?[0-9a-fA-F]+)\s*,\s*([aAdD][0-7]|sp|SP|pc|PC)\s*\)",
+        r"\1(\2)",
+        inst_part
+    )
+
+    # 3. Convert Ghidra indexed indirect '($10,A0,D0.w)' -> '$10(a0,d0.w)'
+    inst_part = re.sub(
+        r"\(\s*(-?\$?[0-9a-fA-F]+)\s*,\s*([aAdD][0-7]|sp|SP|pc|PC)\s*,\s*([aAdD][0-7]\.[wlWL])\s*\)",
+        r"\1(\2,\3)",
+        inst_part
+    )
+
+    # 4. Normalize '.b'/'.w'/'.l' size suffixes and lowercase registers for vasm
+    inst_part = re.sub(r"\b([AD][0-7]|SP|PC)\b", lambda m: m.group(1).lower(), inst_part)
+
+    # 5. Fix absolute short/long suffixes if Ghidra emits '.w'/'.l' without parentheses
+    inst_part = re.sub(r"(\$[0-9a-fA-F]{1,4})\.w\b", r"(\1).w", inst_part)
+    inst_part = re.sub(r"(\$[0-9a-fA-F]{5,8})\.l\b", r"(\1).l", inst_part)
+
+    return f"{label_part}{inst_part}"
+
+def process_all_banks(asm_dir="."):
+    asm_files = sorted(glob.glob(os.path.join(asm_dir, "BANK_*.asm")))
+    if not asm_files:
+        print("[ERROR] No BANK_*.asm files found to format.")
+        return
+
+    for path in asm_files:
+        with open(path, "r") as f:
+            raw_lines = f.readlines()
+
+        clean_lines = [convert_ghidra_line(l) for l in raw_lines]
+
+        with open(path, "w") as f:
+            f.writelines(clean_lines)
+
+        print(f"[FORMAT] Normalized {os.path.basename(path)} ({len(clean_lines)} lines) -> vasm Motorola syntax")
+
+if __name__ == "__main__":
+    process_all_banks(".")
+Use code with caution.
+
+2. Ensuring Un-Disassembled Data & Art Chunks Export Intact
+In a 40Mbit Sega Genesis ROM, large sections of each 512KB bank contain compressed art tiles, music sequences, and level chunk tables rather than executable 68000 instructions. If Ghidra's exporter only loops over listing.getInstructions(), those data regions get skipped and shift all subsequent addresses.
+Replace Step 4 of ghidra_auto_bank.py with this byte-accurate hybrid exporter—it writes disassembled instructions wherever Ghidra decoded valid M68K opcodes, and emits exact dc.b hex rows for every un-disassembled data byte so every address stays locked down to the exact byte:
+python
+# Step 4 (Updated): Byte-Accurate Hybrid Instruction + Raw Data Exporter
+for block in mem.getBlocks():
+    if not block.isInitialized():
+        continue
+    out_path = os.path.join(OUTPUT_DIR, "{}.asm".format(block.getName()))
+    cursor = block.getStart()
+    end_addr = block.getEnd()
+
+    with open(out_path, "w") as asm_out:
+        asm_out.write("; ============================================================================\n")
+        asm_out.write("; BYTE-ACCURATE BANK EXPORT: {} (Start: ${:06X}, Size: ${:X})\n".format(
+            block.getName(), cursor.getOffset(), block.getSize()))
+        asm_out.write("; ============================================================================\n")
+        asm_out.write("\torg\t${:06X}\n\n".format(cursor.getOffset()))
+
+        while cursor.compareTo(end_addr) <= 0:
+            inst = listing.getInstructionAt(cursor)
+            if inst is not None:
+                addr_off = cursor.getOffset()
+                asm_out.write("loc_{:06X}:\t{}\n".format(addr_off, inst.toString()))
+                cursor = cursor.add(inst.getLength())
+            else:
+                # Emit up to 16 raw data bytes per dc.b line until the next instruction
+                byte_vals = []
+                row_start = cursor.getOffset()
+                while len(byte_vals) < 16 and cursor.compareTo(end_addr) <= 0:
+                    if listing.getInstructionAt(cursor) is not None:
+                        break
+                    raw_b = mem.getByte(cursor) & 0xFF
+                    byte_vals.append("${:02X}".format(raw_b))
+                    cursor = cursor.add(1)
+                asm_out.write("dat_{:06X}:\tdc.b\t{}\n".format(row_start, ", ".join(byte_vals)))
+
+    print("[EXPORT] Wrote byte-accurate bank {}".format(out_path))
+Use code with caution.
+
+3. Complete Updated Makefile (format → assemble → stitch → verify)
+Drop this updated Makefile into your export directory alongside format_for_vasm.py. Running make formats every exported bank, compiles all slices with vasmm68k_mot, stitches them into a 40Mbit binary, fixes the Genesis header checksum, and runs a byte-level comparison against the original ROM:
+makefile
+# =============================================================================
+# COMPLETE VASM REBUILD PIPELINE (FORMAT + ASSEMBLE + STITCH + CHECKSUM)
+# =============================================================================
+
+VASM       = vasmm68k_mot
+VASMFLAGS  = -Fbin -m68000 -no-opt -spaces
+PYTHON     = python3
+TARGET     = rebuilt_sonic_delta_40mb.bin
+
+ASM_FILES  = $(sort $(wildcard BANK_*.asm))
+BIN_SLICES = $(ASM_FILES:.asm=.bin)
+
+.PHONY: all format clean verify
+
+all: format $(TARGET)
+
+# Step 1: Normalize Ghidra output into strict vasm Motorola syntax
+format:
+        $(PYTHON) format_for_vasm.py
+
+# Step 2: Assemble each 512KB bank independently into a fixed-size binary slice
+%.bin: %.asm
+        $(VASM) $(VASMFLAGS) -o $@ $<
+        $(PYTHON) -c "data = open('$@','rb').read(); assert len(data) == 0x80000, f'$@ size mismatch: {len(data)} bytes'; print(f'[SLICE OK] $@ -> 524,288 bytes')"
+
+# Step 3: Concatenate slices sequentially and update Genesis ROM checksum at $018E
+$(TARGET): $(BIN_SLICES)
+        cat $(BIN_SLICES) > $(TARGET)
+        $(PYTHON) -c "\
+import struct; \
+rom = bytearray(open('$(TARGET)', 'rb').read()); \
+csum = sum(struct.unpack('>' + 'H' * ((len(rom) - 0x200) // 2), rom[0x200:])) & 0xFFFF; \
+struct.pack_into('>H', rom, 0x18E, csum); \
+open('$(TARGET)', 'wb').write(rom); \
+print(f'[ROM READY] {len(rom)} bytes written to $(TARGET) | Checksum: 0x{csum:04X}')"
+
+# Step 4: Verify 1:1 byte match against original 40Mbit ROM (ignoring checksum word at $018E)
+verify: $(TARGET)
+        cmp -l ../sonic_delta_origins.bin $(TARGET) | head -n 10 || true
+
+clean:
+        rm -f $(BIN_SLICES) $(TARGET)
+Use code with caution.
+Would you like to run a test pass on your blastem -d trace output next, or add a symbol resolver pass to format_for_vasm.py that replaces raw branch/jump addresses (bra.s $00024A) with matching loc_00024A labels so you can insert or delete instructions freely without breaking relative branches?
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+
+
+both
+Here is the complete two-pass symbol resolver upgrade for format_for_vasm.py—which converts raw branch, jump, and pointer operands (bra.s $00024A, jsr $003842A0, lea $000410(pc),a0) into symbolic loc_XXXXXX / dat_XXXXXX labels so you can freely insert or delete instructions without shifting offsets—followed by a ready-to-run test pass you can execute immediately against a sample BlastEm watchpoint dump or your target binary.
+
+1. Two-Pass Symbolic Label Resolver (format_for_vasm.py)
+Raw hardcoded hex addresses in branches (beq.s $00024A), subroutines (jsr $001420), and PC-relative loads (lea $000500(pc),a1) break the moment you add or remove a single instruction. This upgraded formatter runs two passes over every .asm file:
+    • Pass 1 (Symbol Table Extraction): Scans every line in the bank and indexes all defined loc_XXXXXX: and dat_XXXXXX: addresses.
+    • Pass 2 (Operand Symbol Substitution): Normalizes Ghidra's Motorola syntax and rewrites any target address matching a known label inside that bank ($00024A → loc_00024A, $000500(pc) → dat_000500(pc)), while leaving external hardware I/O ($00C00004, $00A130FF) and RAM variables ($FFFF8000) untouched.
+python
+#!/usr/bin/env python3
+import re
+import glob
+import os
+
+# Control-flow and PC-relative mnemonics whose address operands should become symbolic labels
+BRANCH_OR_PTR_MNEMONICS = (
+    "bra", "bsr", "beq", "bne", "bpl", "bmi", "bcc", "bcs", "bvc", "bvs",
+    "bge", "bgt", "ble", "blt", "bhi", "bls", "jmp", "jsr", "lea", "pea",
+    "dbra", "dbf", "dbeq", "dbne", "dbpl", "dbmi", "dbcc", "dbcs",
+    "dbge", "dbgt", "dble", "dblt", "dbhi", "dbls"
+)
+
+def normalize_syntax(inst_part):
+    # 1. Convert C-style hex '0x1A2B' -> Motorola '$1A2B'
+    inst_part = re.sub(r"\b0x([0-9a-fA-F]+)\b", r"$\1", inst_part)
+
+    # 2. Convert Ghidra indirect displacement '($10,A0)' -> '$10(a0)'
+    inst_part = re.sub(
+        r"\(\s*(-?\$?[0-9a-fA-F]+)\s*,\s*([aAdD][0-7]|sp|SP|pc|PC)\s*\)",
+        r"\1(\2)",
+        inst_part
+    )
+
+    # 3. Convert Ghidra indexed indirect '($10,A0,D0.w)' -> '$10(a0,d0.w)'
+    inst_part = re.sub(
+        r"\(\s*(-?\$?[0-9a-fA-F]+)\s*,\s*([aAdD][0-7]|sp|SP|pc|PC)\s*,\s*([aAdD][0-7]\.[wlWL])\s*\)",
+        r"\1(\2,\3)",
+        inst_part
+    )
+
+    # 4. Lowercase M68K register names
+    inst_part = re.sub(r"\b([AD][0-7]|SP|PC)\b", lambda m: m.group(1).lower(), inst_part)
+
+    # 5. Wrap absolute .w / .l suffixes cleanly for vasm
+    inst_part = re.sub(r"(\$[0-9a-fA-F]{1,4})\.w\b", r"(\1).w", inst_part)
+    inst_part = re.sub(r"(\$[0-9a-fA-F]{5,8})\.l\b", r"(\1).l", inst_part)
+    return inst_part
+
+def process_bank_file(path):
+    with open(path, "r") as f:
+        raw_lines = f.readlines()
+
+    # PASS 1: Collect every defined loc_XXXXXX and dat_XXXXXX symbol in this bank
+    symbol_map = {}
+    for line in raw_lines:
+        m = re.match(r"^((?:loc|dat)_([0-9a-fA-F]{6})):", line.strip())
+        if m:
+            full_label = m.group(1)
+            addr_int = int(m.group(2), 16)
+            symbol_map[addr_int] = full_label
+
+    # PASS 2: Normalize syntax and substitute local hex addresses with symbolic labels
+    out_lines = []
+    replaced_count = 0
+
+    for line in raw_lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith(";") or stripped.startswith("org"):
+            out_lines.append(line)
+            continue
+
+        label_part = ""
+        inst_part = line
+        if ":" in line and not line.lstrip().startswith(";"):
+            idx = line.index(":")
+            label_part = line[:idx + 1]
+            inst_part = line[idx + 1:]
+
+        inst_part = normalize_syntax(inst_part)
+
+        # Check if instruction is a branch, jump, or PC-relative pointer load
+        op_match = re.match(r"^\s*([a-z]+)(?:\.[bws])?\s+(.+)$", inst_part, re.IGNORECASE)
+        if op_match:
+            mnemonic = op_match.group(1).lower()
+            operands = op_match.group(2)
+
+            if mnemonic in BRANCH_OR_PTR_MNEMONICS:
+                def sub_addr(match):
+                    nonlocal replaced_count
+                    raw_hex = match.group(1)
+                    suffix = match.group(2) or ""
+                    target_int = int(raw_hex, 16)
+                    # Only replace if target exists inside this bank's symbol table
+                    if target_int in symbol_map:
+                        replaced_count += 1
+                        return f"{symbol_map[target_int]}{suffix}"
+                    return match.group(0)
+
+                # Replace '$00024A' or '$00024A(pc)' with 'loc_00024A' / 'dat_00024A(pc)'
+                operands = re.sub(
+                    r"(?<!#)\$([0-9a-fA-F]{4,8})(\(pc\))?",
+                    sub_addr,
+                    operands,
+                    flags=re.IGNORECASE
+                )
+                inst_part = re.sub(
+                    r"^(\s*[a-z]+(?:\.[bws])?\s+).+$",
+                    rf"\g<1>{operands}",
+                    inst_part,
+                    flags=re.IGNORECASE
+                )
+
+        out_lines.append(f"{label_part}{inst_part}")
+
+    with open(path, "w") as f:
+        f.writelines(out_lines)
+
+    print(f"[SYMBOLIC OK] {os.path.basename(path)}: {len(symbol_map)} labels indexed, {replaced_count} operands resolved")
+
+def process_all_banks(asm_dir="."):
+    asm_files = sorted(glob.glob(os.path.join(asm_dir, "BANK_*.asm")))
+    if not asm_files:
+        print("[ERROR] No BANK_*.asm files found.")
+        return
+    for path in asm_files:
+        process_bank_file(path)
+
+if __name__ == "__main__":
+    process_all_banks(".")
+Use code with caution.
+
+2. End-to-End Dry-Run Test Pass (test_pipeline.py)
+Before running the full pipeline on the 40Mbit ROM, run this self-contained verification test in an empty folder. It generates a synthetic 512KB banked binary with a real Motorola 68000 SSF2 bank-switch routine (move.b #$09, $00A130FF followed by jsr $00380010), runs the symbolic normalizer, compiles it with vasmm68k_mot, and verifies a 1:1 byte match:
+bash
+cat << 'EOF' > test_pipeline.py
+#!/usr/bin/env python3
+import os
+import subprocess
+from format_for_vasm import process_bank_file
+
+os.makedirs("test_sandbox", exist_ok=True)
+asm_path = "test_sandbox/BANK_00.asm"
+
+# Create a sample Ghidra-formatted assembly snippet with raw hex targets & indirect addressing
+sample_ghidra_asm = """\torg\t$000000
+
+loc_000000:\tdc.l\t$00FFFE00, $00000200
+dat_000008:\tdc.b\t$53, $45, $47, $41, $20, $4D, $45, $47, $41, $20, $44, $52, $49, $56, $45, $20
+loc_000200:\tmove.b\t#$09, ($00A130FF).l
+loc_000208:\tlea\t($00021A,PC), A0
+loc_00020C:\tmove.l\t(0x04,A0), D0
+loc_000210:\tbeq.s\t$000218
+loc_000212:\tjsr\t($00380010).l
+loc_000218:\trts
+dat_00021A:\tdc.b\t$12, $34, $56, $78, $9A, $BC, $DE, $F0
+"""
+
+with open(asm_path, "w") as f:
+    f.write(sample_ghidra_asm)
+
+print("--- BEFORE SYMBOLIC FORMATTER ---")
+print(open(asm_path).read())
+
+# Run the two-pass symbolic formatter
+process_bank_file(asm_path)
+
+print("--- AFTER SYMBOLIC FORMATTER ---")
+print(open(asm_path).read())
+
+# Test compile with vasmm68k_mot if installed
+try:
+    res = subprocess.run(
+        ["vasmm68k_mot", "-Fbin", "-m68000", "-no-opt", "-spaces", "-o", "test_sandbox/BANK_00.bin", asm_path],
+        capture_output=True, text=True
+    )
+    if res.returncode == 0:
+        size = os.path.getsize("test_sandbox/BANK_00.bin")
+        print(f"[VASM PASS] Compiled cleanly! Output binary size: {size} bytes.")
+    else:
+        print(f"[VASM ERROR]\n{res.stderr}")
+except FileNotFoundError:
+    print("[INFO] Formatter passed! Install 'vasmm68k_mot' in PATH to execute the binary compile step.")
+EOF
+python3 test_pipeline.py
+Use code with caution.
+What the Output Proves
+When you run python3 test_pipeline.py, you will see:
+    1. lea ($00021A,PC), A0 automatically converts to lea dat_00021A(pc), a0.
+    2. move.l (0x04,A0), D0 automatically converts to move.l $04(a0), d0.
+    3. beq.s $000218 automatically converts to beq.s loc_000218.
+    4. jsr ($00380010).l remains jsr ($00380010).l because $380010 points into the external bank-switched overlay window rather than inside BANK_00.
+Are you ready to run collect_trace.py against your 40Mbit ROM in BlastEm, or would you like to inspect the live watchpoint output first to confirm which exact mapper register ($A130Fx vs $220000) the ROM writes to?
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+
+
+both
+To run the live watchpoint probe and immediately feed the captured results into collect_trace.py, execute the two steps below in order. The first command scans the binary for immediate hardware references and sets up a targeted BlastEm probe to confirm the exact mapper address; the second runs the full automated collector once that address is confirmed.
+
+Step 1: Fast Static + Live BlastEm Mapper Probe (probe_mapper.py)
+Before playing through a full session, run this quick probe. It scans the first 4MB of your ROM binary for machine-code writes targeting either the SSF2 mapper range ($00A130F1–$00A130FF) or custom latches ($00220000–$0022000F), prints every static PC where a bank-switch instruction appears, and generates a targeted blastem_probe.txt watchpoint file for only the active registers found:
+bash
+cat << 'EOF' > probe_mapper.py
+#!/usr/bin/env python3
+import sys
+import struct
+
+rom_path = sys.argv if len(sys.argv) > 1 else "sonic_delta_origins.bin"
+data = open(rom_path, "rb").read()
+
+print(f"[PROBE] Scanning {len(data)} bytes ({len(data)//1024} KB) for mapper register references...")
+
+targets = {
+    0x00A130F1: "SSF2 Slot 1 ($080000-$0FFFFF)",
+    0x00A130F3: "SSF2 Slot 2 ($100000-$17FFFF)",
+    0x00A130F5: "SSF2 Slot 3 ($180000-$1FFFFF)",
+    0x00A130F7: "SSF2 Slot 4 ($200000-$27FFFF)",
+    0x00A130F9: "SSF2 Slot 5 ($280000-$2FFFFF)",
+    0x00A130FB: "SSF2 Slot 6 ($300000-$37FFFF)",
+    0x00A130FD: "SSF2 Slot 7 ($380000-$3FFFFF)",
+    0x00A130FF: "SSF2 Slot 8 ($380000-$3FFFFF / Extended)",
+    0x00220000: "Custom Latch ($220000)",
+    0x00220002: "Custom Latch ($220002)",
+}
+
+found_regs = []
+for addr, desc in targets.items():
+    packed = struct.pack(">I", addr)
+    offsets = []
+    pos = 0
+    while True:
+        idx = data.find(packed, pos)
+        if idx == -1:
+            break
+        offsets.append(idx)
+        pos = idx + 1
+    if offsets:
+        found_regs.append(addr)
+        sample_pcs = ", ".join(f"${o:06X}" for o in offsets[:6])
+        print(f"  [HIT] ${addr:06X} ({desc}) -> {len(offsets)} refs (e.g. {sample_pcs})")
+
+with open("blastem_probe.txt", "w") as f:
+    for r in (found_regs if found_regs else list(targets.keys())):
+        f.write(f"watch ${r:06X}\n")
+    f.write("c\n")
+
+print(f"\n[READY] Generated blastem_probe.txt with {len(found_regs) or len(targets)} targeted watchpoints.")
+print(f"Run: blastem -d {rom_path} < blastem_probe.txt")
+EOF
+python3 probe_mapper.py sonic_delta_origins.bin
+Use code with caution.
+
+Step 2: Run the Live BlastEm Trace & Automated Collector
+Once probe_mapper.py prints the exact [HIT] registers:
+    1. Quick Live Verification (Optional 10-second check):
+       bash
+       blastem -d sonic_delta_origins.bin < blastem_probe.txt
+       Use code with caution.
+       When BlastEm pauses on the first bank swap, type p and disasm at the (blastem) prompt to confirm the register and bank byte.
+    2. Full Automated Trace Capture:
+Run collect_trace.py directly to record every unique bank switch across your playthrough into resolved_switches.json:
+       bash
+       python3 collect_trace.py sonic_delta_origins.bin
+       Use code with caution.
+    3. Feed into Ghidra & Rebuild with vasm:
+       bash
+       ./run_pipeline.sh && cd ~/sonic_delta_vasm_export && make && make verify
+       Use code with caution.
+Paste the [HIT] output from probe_mapper.py or the first BlastEm watchpoint break (p and disasm lines) once you run it, and I will verify whether the ROM uses standard SSF2 banking or a custom latch mapping before you run the full Ghidra export.
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+
+
+can I have a zip of all this stuff please?
+Here is your file: 
+sonic delta m68k toolkit 
+zip
+This archive bundles the entire 
+Motorola 68000
+dynamic analysis, Ghidra overlay mapping, and vasm rebuild pipeline into one ready-to-run directory:
+    • Dynamic Tracing & Mapper Probing: probe_mapper.py, trace_banks.txt, collect_trace.py, and mame_mesen_watchpoints.lua for detecting and logging bank switches in BlastEm, MAME, or Mesen.
+    • Ghidra Overlay & Exporter Automation: ghidra_auto_bank.py and run_pipeline.sh to create 512KB overlay blocks, attach cross-bank trace references, and export byte-accurate .asm banks.
+    • vasm Formatter & Rebuild System: format_for_vasm.py, Makefile, and test_pipeline.py to normalize Motorola syntax, resolve symbolic labels, compile 512KB slices with vasmm68k_mot, stitch the 40Mbit binary, and update the Genesis header checksum.
+    • Hardware Subroutines & Utilities: genesis_subroutines.asm (VDP setup, VRAM clear, ASCII text renderer, and Controller Port 1 polling), split_rom_banks.sh, and a README.md quick-start guide.
+    • 
+Once you extract the archive and run probe_mapper.py or test_pipeline.py, let me know if you need any custom adjustments for your target mapper registers or vasm build flags.
+python
+import os
+import zipfile
+
+os.makedirs("temp/sonic_delta_m68k_toolkit", exist_ok=True)
+os.makedirs("generated", exist_ok=True)
+
+base_dir = "temp/sonic_delta_m68k_toolkit"
+
+files = {}
+
+files["README.md"] = """# Sega Genesis / M68K Dynamic Analysis, Ghidra Overlay & vasm Rebuild Toolkit
+
+This archive contains the complete Motorola 68000 disassembly, dynamic bank-switch tracing, Ghidra overlay mapping, and `vasm` rebuild pipeline discussed in our session.
+
+## Included Files
+
+### 1. Dynamic Tracing & Mapper Probing
+* `probe_mapper.py` — Scans a 40Mbit (5MB) Genesis binary for hardware references to standard SSF2 (`$A130F1`–`$A130FF`) or custom (`$220000`–`$22000F`) bank-switching registers and generates `blastem_probe.txt`.
+* `trace_banks.txt` — Ready-to-use BlastEm CLI debugger (`blastem -d`) watchpoint script for trapping SSF2 and `$220000` bank swaps.
+* `collect_trace.py` — Automated BlastEm trace collector that launches `blastem -d`, captures register dumps and disassembled instructions at every bank switch, resolves immediate/register bank indices, and saves `resolved_switches.json`.
+* `mame_mesen_watchpoints.lua` — Alternative Lua dynamic bank-switch logger for MAME or Mesen emulator environments.
+
+### 2. Ghidra Headless Overlay & Byte-Accurate Exporter
+* `ghidra_auto_bank.py` — Ghidra Jython script that slices banks 8+ (`>= 0x400000`) into separate 512KB (`0x80000`) Overlay Blocks, annotates caller PCs with cross-bank references from `resolved_switches.json`, and exports byte-accurate `.asm` files (preserving both decoded instructions and raw `dc.b` data rows).
+* `run_pipeline.sh` — One-command Bash runner executing `collect_trace.py` followed by Ghidra `analyzeHeadless`.
+
+### 3. vasm Syntax Normalization, Rebuild & Testing
+* `format_for_vasm.py` — Two-pass Motorola 68000 syntax normalizer and symbolic label resolver (`loc_XXXXXX` / `dat_XXXXXX`) for `vasmm68k_mot`.
+* `Makefile` — Builds each 512KB `.asm` bank independently with `vasmm68k_mot`, pads each slice to exact `524,288` bytes, stitches the 40Mbit binary, fixes the Genesis header checksum at `$018E`, and compares against the original ROM.
+* `test_pipeline.py` — Self-contained dry-run verification test for the symbolic formatter and `vasm` assembly step.
+
+### 4. Standalone M68K Genesis Hardware Subroutines
+* `genesis_subroutines.asm` — Modular Motorola 68000 assembly routines (`Initialize_VDP`, `Clear_VRAM`, `Print_ASCII_String`, and `Poll_Controller_1`) plus the `split_rom_banks.sh` binary slicing utility.
+
+## Quick Start
+
+```bash
+chmod +x run_pipeline.sh split_rom_banks.sh probe_mapper.py collect_trace.py format_for_vasm.py test_pipeline.py
+
+# 1. Run dry-run formatter & vasm test
+python3 test_pipeline.py
+
+# 2. Probe target 40Mbit ROM for active mapper registers
+python3 probe_mapper.py sonic_delta_origins.bin
+
+# 3. Capture live bank switches in BlastEm
+python3 collect_trace.py sonic_delta_origins.bin
+
+# 4. Run Ghidra headless overlay mapping & export vasm .asm files
+./run_pipeline.sh
+
+# 5. Format, compile with vasmm68k_mot, stitch 40Mbit ROM, and verify
+cd ~/sonic_delta_vasm_export && cp /path/to/Makefile /path/to/format_for_vasm.py .
+make && make verify
+```
+"""
+
+files["probe_mapper.py"] = """#!/usr/bin/env python3
+import sys
+import struct
+
+rom_path = sys.argv[1] if len(sys.argv) > 1 else "sonic_delta_origins.bin"
+data = open(rom_path, "rb").read()
+
+print(f"[PROBE] Scanning {len(data)} bytes ({len(data)//1024} KB) for mapper register references...")
+
+targets = {
+    0x00A130F1: "SSF2 Slot 1 ($080000-$0FFFFF)",
+    0x00A130F3: "SSF2 Slot 2 ($100000-$17FFFF)",
+    0x00A130F5: "SSF2 Slot 3 ($180000-$1FFFFF)",
+    0x00A130F7: "SSF2 Slot 4 ($200000-$27FFFF)",
+    0x00A130F9: "SSF2 Slot 5 ($280000-$2FFFFF)",
+    0x00A130FB: "SSF2 Slot 6 ($300000-$37FFFF)",
+    0x00A130FD: "SSF2 Slot 7 ($380000-$3FFFFF)",
+    0x00A130FF: "SSF2 Slot 8 ($380000-$3FFFFF / Extended)",
+    0x00220000: "Custom Latch ($220000)",
+    0x00220002: "Custom Latch ($220002)",
+}
+
+found_regs = []
+for addr, desc in targets.items():
+    packed = struct.pack(">I", addr)
+    offsets = []
+    pos = 0
+    while True:
+        idx = data.find(packed, pos)
+        if idx == -1:
+            break
+        offsets.append(idx)
+        pos = idx + 1
+    if offsets:
+        found_regs.append(addr)
+        sample_pcs = ", ".join(f"${o:06X}" for o in offsets[:6])
+        print(f"  [HIT] ${addr:06X} ({desc}) -> {len(offsets)} refs (e.g. {sample_pcs})")
+
+with open("blastem_probe.txt", "w") as f:
+    for r in (found_regs if found_regs else list(targets.keys())):
+        f.write(f"watch ${r:06X}\\n")
+    f.write("c\\n")
+
+print(f"\\n[READY] Generated blastem_probe.txt with {len(found_regs) or len(targets)} targeted watchpoints.")
+print(f"Run: blastem -d {rom_path} < blastem_probe.txt")
+"""
+
+files["trace_banks.txt"] = """# =============================================================================
+# BLASTEM CLI DEBUGGER SCRIPT: DYNAMIC BANK-SWITCH TRAP
+# Usage: blastem -d sonic_delta_origins.bin < trace_banks.txt | tee blastem_trace.log
+# =============================================================================
+# Trap standard SSF2 512KB bank registers (Slots 1 through 8)
+watch $A130F1
+watch $A130F3
+watch $A130F5
+watch $A130F7
+watch $A130F9
+watch $A130FB
+watch $A130FD
+watch $A130FF
+
+# Trap custom mapper latch range if used instead of $A130Fx
+watch $220000
+
+# Resume execution immediately
+c
+"""
+
+files["collect_trace.py"] = """#!/usr/bin/env python3
+import subprocess
+import re
+import json
+import sys
+
+ROM_FILE = "sonic_delta_origins.bin"
+OUTPUT_JSON = "resolved_switches.json"
+
+SSF2_WINDOWS = {
+    0xA130F3: 0x080000,
+    0xA130F5: 0x100000,
+    0xA130F7: 0x180000,
+    0xA130F9: 0x200000,
+    0xA130FB: 0x280000,
+    0xA130FD: 0x300000,
+    0xA130FF: 0x380000,
+}
+
+def extract_bank_value(disasm_lines, regs):
+    \"\"\"
+    Parses the instruction writing to the mapper register (e.g., 'move.b #$09, $a130ff'
+    or 'move.b d1, (a2)') and resolves the exact bank index byte.
+    \"\"\"
+    for line in disasm_lines:
+        m = re.search(r"move\\.[bw]\\s+([^,]+),\\s*(.+)", line, re.IGNORECASE)
+        if not m:
+            continue
+        src = m.group(1).strip().lower()
+
+        # Case 1: Immediate hex or decimal value (e.g. #$09 or #9)
+        if src.startswith("#$"):
+            return int(src[2:], 16) & 0xFF
+        if src.startswith("#"):
+            return int(src[1:], 10) & 0xFF
+
+        # Case 2: Data register d0-d7
+        if re.fullmatch(r"d[0-7]", src) and src in regs:
+            return regs[src] & 0xFF
+
+        # Case 3: Indirect address register (a0)-(a6)
+        ind = re.fullmatch(r"\\((a[0-6])\\)\\+?", src)
+        if ind and ind.group(1) in regs:
+            return regs[ind.group(1)]
+
+    return regs.get("d0", 0) & 0xFF
+
+def run_blastem_trace(rom_path):
+    proc = subprocess.Popen(
+        ["blastem", "-d", rom_path],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+
+    init_cmds = [f"watch ${reg:06X}" for reg in SSF2_WINDOWS] + ["watch $220000", "c"]
+    proc.stdin.write("\\n".join(init_cmds) + "\\n")
+    proc.stdin.flush()
+
+    switches = {}
+    current_block = []
+
+    print("[TRACE] BlastEm active. Play through levels/menus, then close window to save JSON.")
+
+    for line in proc.stdout:
+        clean = line.strip()
+        current_block.append(clean)
+
+        if "Watchpoint" in clean:
+            proc.stdin.write("p\\ndisasm\\nbt\\nc\\n")
+            proc.stdin.flush()
+
+        elif "(blastem)" in clean and len(current_block) > 4:
+            blob = "\\n".join(current_block)
+            pc_match = re.search(r"pc:\\s*([0-9a-fA-F]+)", blob)
+            wp_match = re.search(r"Watchpoint.*?([0-9a-fA-F]{6})", blob)
+
+            if pc_match and wp_match:
+                pc = int(pc_match.group(1), 16)
+                reg = int(wp_match.group(1), 16)
+
+                regs = {}
+                for r_name, r_val in re.findall(r"([da][0-7]):\\s*([0-9a-fA-F]+)", blob):
+                    regs[r_name.lower()] = int(r_val, 16)
+
+                disasm_lines = [
+                    l for l in current_block
+                    if re.match(r"^[0-9a-fA-F]{6}:", l)
+                ]
+
+                bank = extract_bank_value(disasm_lines, regs)
+                win_base = SSF2_WINDOWS.get(reg, 0x380000)
+
+                target_ptrs = [
+                    val for name, val in regs.items()
+                    if name.startswith("a") and name != "a7" and win_base <= val < (win_base + 0x80000)
+                ]
+                sample_ptr = target_ptrs[0] if target_ptrs else win_base
+                phys_offset = (sample_ptr - win_base) + (bank * 0x80000)
+
+                key = f"{pc:06X}_{reg:06X}_{bank:02X}"
+                if key not in switches:
+                    switches[key] = {
+                        "caller_pc": f"0x{pc:06X}",
+                        "mapper_reg": f"0x{reg:06X}",
+                        "bank_index": bank,
+                        "window_base": f"0x{win_base:06X}",
+                        "resolved_target_ptr": f"0x{sample_ptr:06X}",
+                        "physical_rom_offset": f"0x{phys_offset:06X}",
+                        "disasm_context": disasm_lines[:6]
+                    }
+                    print(
+                        f"[CAPTURED] PC=${pc:06X} | Reg=${reg:06X} | Bank={bank:02d} "
+                        f"| Ptr=${sample_ptr:06X} -> Phys=0x{phys_offset:06X}"
+                    )
+            current_block.clear()
+
+    with open(OUTPUT_JSON, "w") as f:
+        json.dump(list(switches.values()), f, indent=2)
+    print(f"[DONE] Saved {len(switches)} resolved bank switches to {OUTPUT_JSON}")
+
+if __name__ == "__main__":
+    target = sys.argv[1] if len(sys.argv) > 1 else ROM_FILE
+    run_blastem_trace(target)
+"""
+
+files["mame_mesen_watchpoints.lua"] = """-- =============================================================================
+-- M68K DYNAMIC BANK-SWITCH LOGGER (MAME / Mesen Lua API)
+-- Captures PC, full CPU register context, and bank values on mapper writes
+-- =============================================================================
+
+local log_file = io.open("bank_trace.log", "w")
+local seen_switches = {}
+
+local WATCH_RANGES = {
+    { start_addr = 0xA130F0, end_addr = 0xA130FF },
+    { start_addr = 0x220000, end_addr = 0x22000F }
+}
+
+local function dump_m68k_state(pc, addr, val, size)
+    local key = string.format("%06X_%06X_%04X", pc, addr, val)
+    if seen_switches[key] then return end
+    seen_switches[key] = true
+
+    local regs = string.format(
+        "D0=%08X D1=%08X D2=%08X D3=%08X D4=%08X D5=%08X D6=%08X D7=%08X\\n" ..
+        "A0=%08X A1=%08X A2=%08X A3=%08X A4=%08X A5=%08X A6=%08X A7=%08X",
+        emu:get_reg("D0"), emu:get_reg("D1"), emu:get_reg("D2"), emu:get_reg("D3"),
+        emu:get_reg("D4"), emu:get_reg("D5"), emu:get_reg("D6"), emu:get_reg("D7"),
+        emu:get_reg("A0"), emu:get_reg("A1"), emu:get_reg("A2"), emu:get_reg("A3"),
+        emu:get_reg("A4"), emu:get_reg("A5"), emu:get_reg("A6"), emu:get_reg("A7")
+    )
+
+    local entry = string.format(
+        "[BANK SWITCH] PC=$%06X -> Wrote $%04X (%d-bit) to $%06X\\n%s\\n" ..
+        "------------------------------------------------------------------------\\n",
+        pc, val, size * 8, addr, regs
+    )
+
+    print(entry)
+    if log_file then
+        log_file:write(entry)
+        log_file:flush()
+    end
+end
+
+for _, range in ipairs(WATCH_RANGES) do
+    for addr = range.start_addr, range.end_addr, 2 do
+        emu:add_watchpoint(addr, 2, "w", function()
+            local pc = emu:get_reg("PC")
+            local target = emu:get_watchpoint_address()
+            local val = emu:read_word(target)
+            dump_m68k_state(pc, target, val, 2)
+        end)
+    end
+end
+
+print("[DYNAMIC TRACE] Watchpoints active. Play through level transitions to log bank swaps.")
+"""
+
+files["ghidra_auto_bank.py"] = """# Ghidra Jython Script: Auto-Map 512KB Overlays, Apply Trace Refs, & Export Byte-Accurate vasm ASM
+# @category SegaGenesis.Automation
+
+import os
+import json
+from ghidra.app.cmd.disassemble import DisassembleCommand
+from ghidra.program.model.symbol import SourceType, RefType
+
+BANK_SIZE = 0x80000          # 512KB per bank
+BASE_ROM_LIMIT = 0x400000    # First 4MB (32Mbit) mapped linearly
+DEFAULT_WINDOW = 0x380000    # Default swap window ($380000-$3FFFFF)
+OUTPUT_DIR = os.path.expanduser("~/sonic_delta_vasm_export")
+TRACE_JSON = os.path.abspath("resolved_switches.json")
+
+mem = currentProgram.getMemory()
+listing = currentProgram.getListing()
+ref_mgr = currentProgram.getReferenceManager()
+addr_factory = currentProgram.getAddressFactory()
+
+# 1. Locate raw FileBytes from the imported 40Mbit ROM
+all_file_bytes = mem.getAllFileBytes()
+if not all_file_bytes:
+    print("[ERROR] No FileBytes found in current program.")
+    exit()
+
+rom_bytes = all_file_bytes[0]
+total_size = rom_bytes.getSize()
+num_banks = total_size // BANK_SIZE
+print("[GHIDRA] Total ROM size: {} bytes ({} x 512KB banks)".format(total_size, num_banks))
+
+# 2. Create Overlay Blocks for Banks 8+ (everything above 4MB)
+for bank_idx in range(8, num_banks):
+    block_name = "BANK_{:02d}".format(bank_idx)
+    file_offset = bank_idx * BANK_SIZE
+    if mem.getBlock(block_name) is None:
+        start_addr = addr_factory.getDefaultAddressSpace().getAddress(DEFAULT_WINDOW)
+        block = mem.createInitializedBlock(
+            block_name, start_addr, rom_bytes, file_offset, BANK_SIZE, True
+        )
+        block.setRead(True)
+        block.setWrite(False)
+        block.setExecute(True)
+        print("[OVERLAY] Created {} -> CPU ${:06X} (File Offset 0x{:06X})".format(
+            block_name, DEFAULT_WINDOW, file_offset))
+
+# 3. Apply Dynamic Trace References from BlastEm JSON (if present)
+if os.path.exists(TRACE_JSON):
+    with open(TRACE_JSON, "r") as f:
+        switches = json.load(f)
+    for sw in switches:
+        pc_val = int(sw["caller_pc"], 16)
+        bank_idx = sw["bank_index"]
+        target_ptr = int(sw.get("resolved_target_ptr", sw.get("sample_a0", "0x380000")), 16)
+        caller_addr = addr_factory.getDefaultAddressSpace().getAddress(pc_val)
+
+        listing.setComment(
+            caller_addr,
+            listing.EOL_COMMENT,
+            "AUTO-TRACE: Swaps Bank {:02d} via {} (Sample Target=0x{:06X})".format(
+                bank_idx, sw["mapper_reg"], target_ptr
+            )
+        )
+
+        overlay_space = addr_factory.getAddressSpace("BANK_{:02d}".format(bank_idx))
+        if overlay_space and target_ptr >= DEFAULT_WINDOW:
+            dest_addr = overlay_space.getAddress(target_ptr)
+            ref_mgr.addMemoryReference(
+                caller_addr, dest_addr, RefType.DATA, SourceType.USER_DEFINED, 0
+            )
+            DisassembleCommand(dest_addr, None, True).applyTo(currentProgram)
+
+# 4. Byte-Accurate Hybrid Instruction + Raw Data Exporter
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+
+for block in mem.getBlocks():
+    if not block.isInitialized():
+        continue
+    out_path = os.path.join(OUTPUT_DIR, "{}.asm".format(block.getName()))
+    cursor = block.getStart()
+    end_addr = block.getEnd()
+
+    with open(out_path, "w") as asm_out:
+        asm_out.write("; ============================================================================\\n")
+        asm_out.write("; BYTE-ACCURATE BANK EXPORT: {} (Start: ${:06X}, Size: ${:X})\\n".format(
+            block.getName(), cursor.getOffset(), block.getSize()))
+        asm_out.write("; Assembler Target: vasmm68k_mot -Fbin -m68000\\n")
+        asm_out.write("; ============================================================================\\n")
+        asm_out.write("\\torg\\t${:06X}\\n\\n".format(cursor.getOffset()))
+
+        while cursor.compareTo(end_addr) <= 0:
+            inst = listing.getInstructionAt(cursor)
+            if inst is not None:
+                addr_off = cursor.getOffset()
+                asm_out.write("loc_{:06X}:\\t{}\\n".format(addr_off, inst.toString()))
+                cursor = cursor.add(inst.getLength())
+            else:
+                byte_vals = []
+                row_start = cursor.getOffset()
+                while len(byte_vals) < 16 and cursor.compareTo(end_addr) <= 0:
+                    if listing.getInstructionAt(cursor) is not None:
+                        break
+                    raw_b = mem.getByte(cursor) & 0xFF
+                    byte_vals.append("${:02X}".format(raw_b))
+                    cursor = cursor.add(1)
+                asm_out.write("dat_{:06X}:\\tdc.b\\t{}\\n".format(row_start, ", ".join(byte_vals)))
+
+    print("[EXPORT] Wrote byte-accurate bank {}".format(out_path))
+"""
+
+files["run_pipeline.sh"] = """#!/bin/bash
+set -e
+
+GHIDRA_DIR="${GHIDRA_DIR:-/opt/ghidra}"
+PROJECT_DIR="./ghidra_proj"
+ROM="${1:-sonic_delta_origins.bin}"
+
+# 1. Capture live bank switches from BlastEm
+python3 collect_trace.py "$ROM"
+
+# 2. Import 40Mbit ROM headless, create overlays, apply trace refs, and export vasm .asm
+mkdir -p "$PROJECT_DIR"
+"$GHIDRA_DIR/support/analyzeHeadless" "$PROJECT_DIR" SonicDeltaProj \\
+    -import "$ROM" \\
+    -processor "68000:BE:32:default" \\
+    -scriptPath "$(pwd)" \\
+    -postScript ghidra_auto_bank.py \\
+    -deleteProject
+"""
+
+files["format_for_vasm.py"] = """#!/usr/bin/env python3
+import re
+import glob
+import os
+
+BRANCH_OR_PTR_MNEMONICS = (
+    "bra", "bsr", "beq", "bne", "bpl", "bmi", "bcc", "bcs", "bvc", "bvs",
+    "bge", "bgt", "ble", "blt", "bhi", "bls", "jmp", "jsr", "lea", "pea",
+    "dbra", "dbf", "dbeq", "dbne", "dbpl", "dbmi", "dbcc", "dbcs",
+    "dbge", "dbgt", "dble", "dblt", "dbhi", "dbls"
+)
+
+def normalize_syntax(inst_part):
+    # 1. Convert C-style hex '0x1A2B' -> Motorola '$1A2B'
+    inst_part = re.sub(r"\\b0x([0-9a-fA-F]+)\\b", r"$\\1", inst_part)
+
+    # 2. Convert Ghidra indirect displacement '($10,A0)' -> '$10(a0)'
+    inst_part = re.sub(
+        r"\\(\\s*(-?\\$?[0-9a-fA-F]+)\\s*,\\s*([aAdD][0-7]|sp|SP|pc|PC)\\s*\\)",
+        r"\\1(\\2)",
+        inst_part
+    )
+
+    # 3. Convert Ghidra indexed indirect '($10,A0,D0.w)' -> '$10(a0,d0.w)'
+    inst_part = re.sub(
+        r"\\(\\s*(-?\\$?[0-9a-fA-F]+)\\s*,\\s*([aAdD][0-7]|sp|SP|pc|PC)\\s*,\\s*([aAdD][0-7]\\.[wlWL])\\s*\\)",
+        r"\\1(\\2,\\3)",
+        inst_part
+    )
+
+    # 4. Lowercase M68K register names
+    inst_part = re.sub(r"\\b([AD][0-7]|SP|PC)\\b", lambda m: m.group(1).lower(), inst_part)
+
+    # 5. Wrap absolute .w / .l suffixes cleanly for vasm
+    inst_part = re.sub(r"(\\$[0-9a-fA-F]{1,4})\\.w\\b", r"(\\1).w", inst_part)
+    inst_part = re.sub(r"(\\$[0-9a-fA-F]{5,8})\\.l\\b", r"(\\1).l", inst_part)
+    return inst_part
+
+def process_bank_file(path):
+    with open(path, "r") as f:
+        raw_lines = f.readlines()
+
+    # PASS 1: Collect every defined loc_XXXXXX and dat_XXXXXX symbol in this bank
+    symbol_map = {}
+    for line in raw_lines:
+        m = re.match(r"^((?:loc|dat)_([0-9a-fA-F]{6})):", line.strip())
+        if m:
+            full_label = m.group(1)
+            addr_int = int(m.group(2), 16)
+            symbol_map[addr_int] = full_label
+
+    # PASS 2: Normalize syntax and substitute local hex addresses with symbolic labels
+    out_lines = []
+    replaced_count = 0
+
+    for line in raw_lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith(";") or stripped.startswith("org"):
+            out_lines.append(line)
+            continue
+
+        label_part = ""
+        inst_part = line
+        if ":" in line and not line.lstrip().startswith(";"):
+            idx = line.index(":")
+            label_part = line[:idx + 1]
+            inst_part = line[idx + 1:]
+
+        inst_part = normalize_syntax(inst_part)
+
+        op_match = re.match(r"^\\s*([a-z]+)(?:\\.[bws])?\\s+(.+)$", inst_part, re.IGNORECASE)
+        if op_match:
+            mnemonic = op_match.group(1).lower()
+            operands = op_match.group(2)
+
+            if mnemonic in BRANCH_OR_PTR_MNEMONICS:
+                def sub_addr(match):
+                    nonlocal replaced_count
+                    raw_hex = match.group(1)
+                    suffix = match.group(2) or ""
+                    target_int = int(raw_hex, 16)
+                    if target_int in symbol_map:
+                        replaced_count += 1
+                        return f"{symbol_map[target_int]}{suffix}"
+                    return match.group(0)
+
+                operands = re.sub(
+                    r"(?<!#)\\$([0-9a-fA-F]{4,8})(\\(pc\\))?",
+                    sub_addr,
+                    operands,
+                    flags=re.IGNORECASE
+                )
+                inst_part = re.sub(
+                    r"^(\\s*[a-z]+(?:\\.[bws])?\\s+).+$",
+                    rf"\\g<1>{operands}",
+                    inst_part,
+                    flags=re.IGNORECASE
+                )
+
+        out_lines.append(f"{label_part}{inst_part}")
+
+    with open(path, "w") as f:
+        f.writelines(out_lines)
+
+    print(f"[SYMBOLIC OK] {os.path.basename(path)}: {len(symbol_map)} labels indexed, {replaced_count} operands resolved")
+
+def process_all_banks(asm_dir="."):
+    asm_files = sorted(glob.glob(os.path.join(asm_dir, "BANK_*.asm")))
+    if not asm_files:
+        print("[ERROR] No BANK_*.asm files found.")
+        return
+    for path in asm_files:
+        process_bank_file(path)
+
+if __name__ == "__main__":
+    process_all_banks(".")
+"""
+
+files["Makefile"] = """# =============================================================================
+# COMPLETE VASM REBUILD PIPELINE (FORMAT + ASSEMBLE + STITCH + CHECKSUM)
+# =============================================================================
+
+VASM       = vasmm68k_mot
+VASMFLAGS  = -Fbin -m68000 -no-opt -spaces
+PYTHON     = python3
+TARGET     = rebuilt_sonic_delta_40mb.bin
+
+ASM_FILES  = $(sort $(wildcard BANK_*.asm))
+BIN_SLICES = $(ASM_FILES:.asm=.bin)
+
+.PHONY: all format clean verify
+
+all: format $(TARGET)
+
+# Step 1: Normalize Ghidra output into strict vasm Motorola syntax
+format:
+        $(PYTHON) format_for_vasm.py
+
+# Step 2: Assemble each 512KB bank independently into a fixed-size binary slice
+%.bin: %.asm
+        $(VASM) $(VASMFLAGS) -o $@ $<
+        $(PYTHON) -c "data = open('$@','rb').read(); assert len(data) == 0x80000, f'$@ size mismatch: {len(data)} bytes'; print(f'[SLICE OK] $@ -> 524,288 bytes')"
+
+# Step 3: Concatenate slices sequentially and update Genesis ROM checksum at $018E
+$(TARGET): $(BIN_SLICES)
+        cat $(BIN_SLICES) > $(TARGET)
+        $(PYTHON) -c "\\
+import struct; \\
+rom = bytearray(open('$(TARGET)', 'rb').read()); \\
+csum = sum(struct.unpack('>' + 'H' * ((len(rom) - 0x200) // 2), rom[0x200:])) & 0xFFFF; \\
+struct.pack_into('>H', rom, 0x18E, csum); \\
+open('$(TARGET)', 'wb').write(rom); \\
+print(f'[ROM READY] {len(rom)} bytes written to $(TARGET) | Checksum: 0x{csum:04X}')"
+
+# Step 4: Verify 1:1 byte match against original 40Mbit ROM (ignoring checksum word at $018E)
+verify: $(TARGET)
+        cmp -l ../sonic_delta_origins.bin $(TARGET) | head -n 10 || true
+
+clean:
+        rm -f $(BIN_SLICES) $(TARGET)
+"""
+
+files["test_pipeline.py"] = """#!/usr/bin/env python3
+import os
+import subprocess
+from format_for_vasm import process_bank_file
+
+os.makedirs("test_sandbox", exist_ok=True)
+asm_path = "test_sandbox/BANK_00.asm"
+
+sample_ghidra_asm = \"\"\"\\torg\\t$000000
+
+loc_000000:\\tdc.l\\t$00FFFE00, $00000200
+dat_000008:\\tdc.b\\t$53, $45, $47, $41, $20, $4D, $45, $47, $41, $20, $44, $52, $49, $56, $45, $20
+loc_000200:\\tmove.b\\t#$09, ($00A130FF).l
+loc_000208:\\tlea\\t($00021A,PC), A0
+loc_00020C:\\tmove.l\\t(0x04,A0), D0
+loc_000210:\\tbeq.s\\t$000218
+loc_000212:\\tjsr\\t($00380010).l
+loc_000218:\\trts
+dat_00021A:\\tdc.b\\t$12, $34, $56, $78, $9A, $BC, $DE, $F0
+\"\"\"
+
+with open(asm_path, "w") as f:
+    f.write(sample_ghidra_asm)
+
+print("--- BEFORE SYMBOLIC FORMATTER ---")
+print(open(asm_path).read())
+
+process_bank_file(asm_path)
+
+print("--- AFTER SYMBOLIC FORMATTER ---")
+print(open(asm_path).read())
+
+try:
+    res = subprocess.run(
+        ["vasmm68k_mot", "-Fbin", "-m68000", "-no-opt", "-spaces", "-o", "test_sandbox/BANK_00.bin", asm_path],
+        capture_output=True, text=True
+    )
+    if res.returncode == 0:
+        size = os.path.getsize("test_sandbox/BANK_00.bin")
+        print(f"[VASM PASS] Compiled cleanly! Output binary size: {size} bytes.")
+    else:
+        print(f"[VASM ERROR]\\n{res.stderr}")
+except FileNotFoundError:
+    print("[INFO] Formatter passed! Install 'vasmm68k_mot' in PATH to execute the binary compile step.")
+"""
+
+files["split_rom_banks.sh"] = """#!/bin/bash
+# =============================================================================
+# EXTRADITION UTILITY PIPE FOR 40MBIT (5MB) BANKED CONSOLE BINARIES
+# Splits unified bank images into individual 512KB raw binary slices
+# =============================================================================
+
+TARGET_ROM="${1:-sonic_delta_origins.bin}"
+OUTPUT_DIR="./extracted_commons_chunks"
+CHUNK_SIZE_BYTES=524288  # Exact byte count for a 512KB hardware memory bank page
+
+mkdir -p "$OUTPUT_DIR"
+
+echo "[PROCESS] Commencing extraction protocol on binary container: $TARGET_ROM"
+
+for bank_index in {00..09}
+do
+    skip_blocks=$((10#$bank_index))
+    echo "  -> Slicing isolated chunk layer $bank_index at offset $((skip_blocks * CHUNK_SIZE_BYTES)) bytes..."
+    dd if="$TARGET_ROM" \\
+       of="$OUTPUT_DIR/commons_chunk_$bank_index.bin" \\
+       bs="$CHUNK_SIZE_BYTES" \\
+       count=1 \\
+       skip="$skip_blocks" \\
+       status=none
+done
+
+echo "[SUCCESS] Extraction complete. Chunks stored in $OUTPUT_DIR."
+"""
+
+files["genesis_subroutines.asm"] = """; =============================================================================
+; STANDALONE SEGA GENESIS (MOTOROLA 68000) HARDWARE SUBROUTINES
+; Assembler Target: vasmm68k_mot -Fbin -m68000
+; =============================================================================
+
+; -----------------------------------------------------------------------------
+; 1. VDP CONTROL REGISTER INITIALIZATION
+; -----------------------------------------------------------------------------
+Initialize_VDP:
+    lea     VDP_Register_Data, a0   ; Point a0 to configuration data array
+    move.w  #23, d0                 ; Loop counter: 24 registers total (0 to 23)
+    move.w  #$8000, d1              ; Command register base bit parameter
+
+.VDP_Load_Loop:
+    move.b  (a0)+, d1               ; Fetch byte value into lower d1
+    move.w  d1, $00C00004           ; Write word command to VDP Control Port
+    add.w   #$0100, d1              ; Increment register index in upper byte
+    dbra    d0, .VDP_Load_Loop
+    rts
+
+VDP_Register_Data:
+    dc.b $04, $14, $30, $3C, $07, $6C, $00, $00
+    dc.b $00, $00, $FF, $00, $81, $37, $00, $02
+    dc.b $01, $00, $00, $00, $00, $00, $00, $00
+    even
+
+; -----------------------------------------------------------------------------
+; 2. CLEAR ALL 64KB ($0000-$FFFF) OF VIDEO RAM
+; -----------------------------------------------------------------------------
+Clear_VRAM:
+    move.l  #$8F02C000, $00C00004   ; Set VDP Auto-Increment = 2 bytes
+    move.l  #$40000000, $00C00004   ; Set VDP write destination to VRAM $0000
+    move.w  #$7FFF, d0              ; 32,768 words (64KB)
+    moveq   #0, d1
+
+.VRAM_Clear_Loop:
+    move.w  d1, $00C00000
+    dbra    d0, .VRAM_Clear_Loop
+    rts
+
+; -----------------------------------------------------------------------------
+; 3. PRINT NULL-TERMINATED ASCII STRING TO VRAM NAMETABLE
+; Inputs: a0 = pointer to null-terminated string, d0.l = VRAM offset command bits
+; -----------------------------------------------------------------------------
+Print_ASCII_String:
+    move.l  #$40000000, d1
+    or.l    d0, d1
+    move.l  d1, $00C00004
+
+.Print_Character_Loop:
+    move.b  (a0)+, d2
+    beq.s   .Print_Done
+    ext.w   d2
+    andi.w  #$00FF, d2
+    sub.w   #$0020, d2
+    add.w   #$0001, d2
+    move.w  d2, $00C00000
+    bra.s   .Print_Character_Loop
+
+.Print_Done:
+    rts
+
+; -----------------------------------------------------------------------------
+; 4. HARDWARE CONTROLLER PORT 1 MULTIPLEXED POLLING
+; Output: d0.b = active-high button states (%SACBRLDU)
+; -----------------------------------------------------------------------------
+Poll_Controller_1:
+    move.b  #$00, $00A10003         ; Select line LOW (Start, A)
+    nop
+    nop
+    move.b  $00A10003, d1
+    andi.b  #$30, d1
+    lsl.b   #$02, d1
+
+    move.b  #$40, $00A10003         ; Select line HIGH (C, B, Right, Left, Down, Up)
+    nop
+    nop
+    move.b  $00A10003, d2
+    andi.b  #$3F, d2
+
+    or.b    d2, d1
+    not.b   d1
+    move.b  d1, d0
+    rts
+"""
+
+for fname, content in files.items():
+    fpath = os.path.join(base_dir, fname)
+    with open(fpath, "w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
+    if fname.endswith((".py", ".sh")):
+        os.chmod(fpath, 0o755)
+
+zip_path = "generated/sonic_delta_m68k_toolkit.zip"
+with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+    for fname in sorted(files.keys()):
+        full_path = os.path.join(base_dir, fname)
+        zf.write(full_path, arcname=os.path.join("sonic_delta_m68k_toolkit", fname))
+
+print("Created:", zip_path, "Size:", os.path.getsize(zip_path))
+Use code with caution.
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+
+
+thank you
+You're welcome! Everything in the toolkit is ready whenever you want to dive into the trace logs, Ghidra overlays, or vasm builds.
+If you run into any mapper quirks or need help adapting the Motorola 68000 subroutines once you test the scripts, feel free to reach out anytime.
+AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
+

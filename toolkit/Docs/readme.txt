@@ -16,12 +16,9 @@ Because this 40Mbit ROM stitches multiple Sonic builds and engines together into
     • Header Size & Mapper Detection: Emulators like BlastEm, Genesis Plus GX, and flashcarts (Mega EverDrive) detect the 40Mbit SSF2 mapper either from the "SEGA SSF" system string at $000100 or because the ROM size exceeds 4MB (4,194,304 bytes). Make sure your Makefile always pads rebuilt_sonic_delta_40mb.bin to the exact 5,242,880-byte (5MB) boundary so emulators do not fall back to standard flat 4MB mapping.
     • Checksum Bypass vs. Checksum Fix: Many multi-game hacks patch out the boot checksum loop (beq → bra) so edits do not lock up on boot, while still reading $00018E in diagnostic screens. Keeping the checksum updater in your Makefile ensures compatibility either way.
 If you'd like to re-upload the ROM binary or paste the output from probe_mapper.py / collect_trace.py, I can inspect the exact vector table, sub-game entry points, and bank allocation table for each of the 10 banks (BANK_00 through BANK_09).
-AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
 
+------------
 
-Sonic_Delta_Origins_2026.bin
-File
-Here it is
 Here are the exact technical findings extracted directly from the ROM header and embedded routines you uploaded:
 1. ROM Header & Build Metadata ($000100–$0001FF)
     • Console & Copyright: SEGA GENESIS / (C)SEGA 1994.JUN.
@@ -43,10 +40,10 @@ Author Neto (neto.baiano@hotmail.com) left a complete suite of interactive 68000
 Since we have the exact ROM header and embedded routines confirmed, would you like to:
     • Run collect_trace.py from v2 on your ROM in BlastEm to map out which SSF2 slots ($A130F3–$A130FF) load each sub-game?
     • Locate the entry point for the hidden Neto - Super Depurador hex editor in Ghidra so you can trigger it on demand?
-AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
 
 
-yes
+------------
+
 Here is how to execute both steps right away: running collect_trace.py from your v2 toolkit to map out the SSF2 bank slots across each sub-game, and finding the exact entry point for Neto's hidden Super Depurador in Ghidra.
 
 1. Capture Live SSF2 Slot Mappings (collect_trace.py)
@@ -77,10 +74,9 @@ Once you have that entry address (say $0000XXXX), you can test launching it imme
     1. Run blastem -d sonic_delta_origins.bin.
     2. At the (blastem) prompt, set a breakpoint right after TMSS initialization (b $000206), run c, and once hit, jump directly into the debugger routine with set $pc=$0000XXXX followed by c.
 Once you run collect_trace.py or find the Super Depurador entry address in Ghidra, paste the contents of resolved_switches.json or the disassembly snippet around that function here so we can map out the sub-game bank layout and button trigger!
-AI responses may include mistakes. Current limitations only allow part of the document to be used for this answer. Learn more
 
 
-
+------------
 
 will this make split disassemblies, like the sonic github repos have?
 No, the current toolkit outputs monolithic 512KB bank files (BANK_00.asm through BANK_09.asm) rather than the modular, feature-split directory trees used in Sonic GitHub repositories (like s1disasm or s2disasm).

@@ -1,0 +1,14 @@
+# =============================================================================
+# BLASTEM CLI DEBUGGER SCRIPT: STANDARD SSF2 512KB BANK-SWITCH WATCHPOINTS
+# Excludes $A130F1 (SRAM enable/disable latch) to avoid save-routine noise
+# =============================================================================
+watch $A130F3
+watch $A130F5
+watch $A130F7
+watch $A130F9
+watch $A130FB
+watch $A130FD
+watch $A130FF
+
+# Resume execution immediately
+c

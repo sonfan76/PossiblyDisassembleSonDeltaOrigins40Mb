@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+import re
+import sys
+from pathlib import Path
+
+ADDR_PREFIX_RE = re.compile(r"^(?:ram:)?([0-9A-Fa-f]{6,8})\s+(?:[0-9A-Fa-f]{2}\s+)+")
+HEX_LITERAL_RE = re.compile(r"\b0x([0-9A-Fa-f]+)\b")
+
+
+def strip_operand_comma_spaces(code_part: str) -> str:
+    """
+    Collapse whitespace before and after commas in 68000 operands
+    (e.g. 'move.b (a0), d1' -> 'move.b (a0),d1') while preserving
+    quoted strings like dc.b 'A, B' or dc.b "A, B".
+    """
+    out = []
+    in_quote = None
+    i = 0
+    n = len(code_part)
+
+    while i < n:
+        ch = code_part[i]
+        if in_quote:
+            out.append(ch)
+            if ch == in_quote:
+                in_quote = None
+            i += 1
+            continue
+
+        if ch in ('"', "'"):
+            in_quote = ch
+            out.append(ch)
+            i += 1
+            continue
+
+        if ch == ",":
+            # Trim any spaces immediately preceding the comma
+            while out and out[-1] in (" ", "\t"):
+                out.pop()
+            out.append(",")
+            # Skip any spaces immediately following the comma
+            i += 1
+            while i < n and code_part[i] in (" ", "\t"):
+                i += 1
+            continue
+
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
+def convert_line(line: str) -> str:
+    stripped = line.rstrip()
+    if not stripped:
+        return ""
+    if stripped.lstrip().startswith((";", "*")):
+        return stripped
+
+    # Separate code from trailing ';' comment so comments stay untouched
+    comment_part = ""
+    in_quote = None
+    split_idx = None
+    for idx, ch in enumerate(stripped):
+        if in_quote:
+            if ch == in_quote:
+                in_quote = None
+        elif ch in ('"', "'"):
+            in_quote = ch
+        elif ch == ";":
+            split_idx = idx
+            break
+
+    if split_idx is not None:
+        code_part = stripped[:split_idx]
+        comment_part = stripped[split_idx:]
+    else:
+        code_part = stripped
+
+    # 1. Strip leading Ghidra address + raw hex byte columns
+    cleaned = ADDR_PREFIX_RE.sub("    ", code_part)
+
+    # 2. Convert C-style 0xABCD literals to Motorola $ABCD syntax
+    cleaned = HEX_LITERAL_RE.sub(r"$\1", cleaned)
+
+    # 3. Convert Ghidra data directives to vasm dc.b / dc.w / dc.l
+    cleaned = re.sub(r"\b(?:db|undefined1)\b", "dc.b", cleaned)
+    cleaned = re.sub(r"\b(?:dw|undefined2)\b", "dc.w", cleaned)
+    cleaned = re.sub(r"\b(?:dd|undefined4)\b", "dc.l", cleaned)
+
+    # 4. Enforce strict vasm no-space-around-comma rule on operands
+    cleaned = strip_operand_comma_spaces(cleaned)
+
+    return cleaned + comment_part
+
+
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python3 format_for_vasm.py <input_raw.asm> <output_vasm.asm>")
+        sys.exit(1)
+
+    in_path = Path(sys.argv[1])
+    out_path = Path(sys.argv[2])
+
+    lines = in_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    converted = [convert_line(line) for line in lines]
+    out_path.write_text("\n".join(converted) + "\n", encoding="utf-8")
+    print(f"[+] Formatted {in_path.name} -> {out_path}")
+
+
+if __name__ == "__main__":
+    main()

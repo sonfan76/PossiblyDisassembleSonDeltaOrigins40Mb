@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+import re
+import json
+import argparse
+from pathlib import Path
+
+BANK_SIZE = 0x80000
+LABEL_LINE_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*:")
+
+def sanitize_label(path_str):
+    stem = Path(path_str).stem
+    clean = "".join(c if c.isalnum() else "_" for c in stem)
+    while "__" in clean:
+        clean = clean.replace("__", "_")
+    return clean.strip("_")
+
+def classify_symbol(label_name):
+    for prefix in ("s1disasm", "s2disasm", "skdisasm"):
+        if label_name.startswith(prefix + "_"):
+            return prefix
+    if label_name.startswith("Neto_"):
+        return "custom_neto"
+    return None
+
+def slice_bank_asm_by_symbols(bank_file, out_root, master_includes):
+    bank_stem = bank_file.stem
+    lines = bank_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+
+    segments = []
+    cur_folder = "banks"
+    cur_name = f"{bank_stem}_header"
+    cur_lines = []
+
+    for line in lines:
+        m = LABEL_LINE_RE.match(line.strip())
+        if m:
+            lbl = m.group(1)
+            folder = classify_symbol(lbl)
+            if folder:
+                if cur_lines:
+                    segments.append((cur_folder, cur_name, cur_lines))
+                cur_folder = folder
+                cur_name = lbl
+                cur_lines = [line]
+                continue
+        cur_lines.append(line)
+
+    if cur_lines:
+        segments.append((cur_folder, cur_name, cur_lines))
+
+    for idx, (folder, mod_name, seg_lines) in enumerate(segments):
+        if folder == "banks":
+            rel_path = Path("src") / "banks" / f"{bank_stem}_part{idx:03d}.asm"
+        else:
+            rel_path = Path("src") / folder / f"{mod_name}.asm"
+
+        dest = out_root / rel_path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text("\n".join(seg_lines) + "\n", encoding="utf-8")
+        master_includes.append(f'    include "{rel_path.as_posix()}"')
+
+def build_repo_structure(rom_path, matches_json, hooks_json, asm_dir, out_repo):
+    rom_data = Path(rom_path).read_bytes()
+    report = json.loads(Path(matches_json).read_text(encoding="utf-8"))
+    matches = report.get("matches", [])
+
+    out = Path(out_repo)
+    for sub in ("src/banks", "src/custom_neto", "src/s1disasm", "src/s2disasm", "src/skdisasm", "assets"):
+        (out / sub).mkdir(parents=True, exist_ok=True)
+
+    asset_inc_lines = ["; Auto-generated Upstream Asset Table", ""]
+    asset_count = 0
+    for m in matches:
+        if m.get("kind") != "asset":
+            continue
+        start = m["rom_offset_int"]
+        size = m["size"]
+        repo_tag = m["repo"]
+        rel_upstream = Path(m["symbol"])
+
+        dest_file = out / "assets" / repo_tag / rel_upstream
+        dest_file.parent.mkdir(parents=True, exist_ok=True)
+        dest_file.write_bytes(rom_data[start : start + size])
+
+        lbl = f"{repo_tag}_{sanitize_label(str(rel_upstream))}_{start:06X}"
+        rel_inc = dest_file.relative_to(out).as_posix()
+        asset_inc_lines.append(f"{lbl}:")
+        asset_inc_lines.append(f'    incbin "{rel_inc}"')
+        asset_inc_lines.append("")
+        asset_count += 1
+
+    (out / "src" / "upstream_assets.asm").write_text("\n".join(asset_inc_lines), encoding="utf-8")
+
+    mapper_inc = """SRAM_CTRL       equ $A130F1
+BANK_REG_1      equ $A130F3
+BANK_REG_2      equ $A130F5
+BANK_REG_3      equ $A130F7
+BANK_REG_4      equ $A130F9
+BANK_REG_5      equ $A130FB
+BANK_REG_6      equ $A130FD
+BANK_REG_7      equ $A130FF
+
+SET_BANK macro reg,bank_id
+    move.b  #\\bank_id,(\\reg).l
+    endm
+"""
+    (out / "src" / "ssf2_mapper.inc").write_text(mapper_inc, encoding="utf-8")
+
+    neto_inc_local = Path("src/custom_neto/neto_hooks_map.inc")
+    has_neto_inc = False
+    if neto_inc_local.exists():
+        (out / "src" / "custom_neto" / "neto_hooks_map.inc").write_text(
+            neto_inc_local.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        has_neto_inc = True
+
+    master_lines = [
+        '    include "src/ssf2_mapper.inc"',
+        '    include "src/upstream_assets.asm"',
+    ]
+    if has_neto_inc:
+        master_lines.append('    include "src/custom_neto/neto_hooks_map.inc"')
+    master_lines.append("")
+
+    asm_source = Path(asm_dir)
+    bank_files = sorted(asm_source.glob("bank_*.asm")) if asm_source.exists() else []
+    for bf in bank_files:
+        slice_bank_asm_by_symbols(bf, out, master_lines)
+
+    (out / "main.asm").write_text("\n".join(master_lines) + "\n", encoding="utf-8")
+
+    makefile_text = f"""VASM = vasmm68k_mot
+VASMFLAGS = -Fbin -devpac
+TARGET = build/sonic_delta_40mb_rebuilt.bin
+ORIG_ROM = {rom_path}
+
+all: $(TARGET) verify
+
+$(TARGET): main.asm
+	@mkdir -p build
+	$(VASM) $(VASMFLAGS) -o $(TARGET) main.asm
+
+verify: $(TARGET)
+	@cmp -l $(ORIG_ROM) $(TARGET) | head -n 20 || true
+	@sha256sum $(ORIG_ROM) $(TARGET)
+
+clean:
+	rm -rf build
+"""
+    (out / "Makefile").write_text(makefile_text, encoding="utf-8")
+    print(f"[+] Generated repository at {out.resolve()} ({asset_count} assets, {len(bank_files)} banks)")
+
+def main():
+    parser = argparse.ArgumentParser(description="Build modular Git repo from 40Mb ROM & matches")
+    parser.add_argument("--rom", default="Sonic_Delta_Origins_2026.bin")
+    parser.add_argument("--matches", default="upstream_matches.json")
+    parser.add_argument("--hooks", default="neto_custom_hooks.json")
+    parser.add_argument("--asm-dir", default="disasm_banks")
+    parser.add_argument("--out", default="sonic_delta_disasm_repo")
+    args = parser.parse_args()
+    build_repo_structure(args.rom, args.matches, args.hooks, args.asm_dir, args.out)
+
+if __name__ == "__main__":
+    main()

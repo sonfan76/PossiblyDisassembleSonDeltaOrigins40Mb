@@ -1,0 +1,46 @@
+VDP_Load_Tiles_DMA:
+    lea     ($C00004).l,a0
+    move.w  #$8174,(a0)
+    move.w  #$9300,d3
+    move.b  d2,d3
+    move.w  d3,(a0)
+    lsr.w   #8,d2
+    move.w  #$9400,d3
+    move.b  d2,d3
+    move.w  d3,(a0)
+    lsr.l   #1,d0
+    move.w  #$9500,d3
+    move.b  d0,d3
+    move.w  d3,(a0)
+    lsr.l   #8,d0
+    move.w  #$9600,d3
+    move.b  d0,d3
+    move.w  d3,(a0)
+    lsr.l   #8,d0
+    andi.b  #$7F,d0
+    move.w  #$9700,d3
+    move.b  d0,d3
+    move.w  d3,(a0)
+    move.w  d1,d3
+    andi.w  #$3FFF,d3
+    ori.w   #$4000,d3
+    move.w  d3,(a0)
+    move.w  d1,d3
+    rol.w   #2,d3
+    andi.w  #$0003,d3
+    ori.w   #$0080,d3
+    move.w  d3,(a0)
+    move.w  #$8164,(a0)
+    rts
+
+VDP_Load_Palette_CRAM:
+    lea     ($C00004).l,a0
+    andi.l  #$0000007F,d0
+    swap    d0
+    ori.l   #$C0000000,d0
+    move.l  d0,(a0)
+    lea     ($C00000).l,a0
+.copy_loop:
+    move.w  (a1)+,(a0)
+    dbf     d1,.copy_loop
+    rts

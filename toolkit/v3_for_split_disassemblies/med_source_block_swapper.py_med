@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+import re
+import json
+import argparse
+from pathlib import Path
+
+UPSTREAM_ROOTS = {
+    "s1disasm": Path("s1disasm-AS"),
+    "s2disasm": Path("s2disasm-master"),
+    "skdisasm": Path("skdisasm-master"),
+}
+
+GLOBAL_LABEL_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*:")
+TERMINATOR_RE = re.compile(r"^\s*(?:rts|rte|jmp)\b", re.IGNORECASE)
+BRANCH_TARGET_RE = re.compile(
+    r"^\s*(?:bra|bsr|beq|bne|bpl|bmi|bcc|bcs|bvc|bvs|bhi|bls|bge|blt|bgt|ble|jmp|jsr)(?:\.[bws])?\s+([A-Za-z_][A-Za-z0-9_]*)",
+    re.IGNORECASE,
+)
+
+def load_defined_constants(repo_dir: Path):
+    defined = set()
+    for inc_name in ("human_constants.inc", "ssf2_mapper.inc"):
+        inc_file = repo_dir / "src" / inc_name
+        if not inc_file.exists():
+            continue
+        for line in inc_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            parts = line.strip().split()
+            if len(parts) >= 3 and parts[1].lower() in ("equ", "="):
+                defined.add(parts[0])
+    return defined
+
+def extract_upstream_routine(repo_tag: str, raw_symbol: str):
+    root = UPSTREAM_ROOTS.get(repo_tag)
+    if not root or not root.exists():
+        return None, None
+    label_re = re.compile(rf"^\s*{re.escape(raw_symbol)}\s*:")
+    for asm_file in root.rglob("*.asm"):
+        try:
+            lines = asm_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except Exception:
+            continue
+        for idx, line in enumerate(lines):
+            if not label_re.match(line):
+                continue
+            start_idx = idx
+            while start_idx > 0 and idx - start_idx <= 5:
+                if lines[start_idx - 1].strip().startswith(";"):
+                    start_idx -= 1
+                else:
+                    break
+            block = []
+            saw_terminator = False
+            for cur_idx in range(start_idx, len(lines)):
+                cur_line = lines[cur_idx]
+                stripped = cur_line.strip()
+                if cur_idx > idx:
+                    m_lbl = GLOBAL_LABEL_RE.match(stripped)
+                    if m_lbl and not m_lbl.group(1).startswith(("loc_", "byte_", "word_")):
+                        if saw_terminator:
+                            break
+                        return None, None
+                block.append(cur_line)
+                if TERMINATOR_RE.match(stripped):
+                    saw_terminator = True
+            if saw_terminator and len(block) >= 2:
+                return block, f"{asm_file.as_posix()}:{idx + 1}"
+    return None, None
+
+def is_block_self_contained(block_lines, entry_symbol: str, defined_symbols: set):
+    local_labels = {entry_symbol}
+    for line in block_lines:
+        m_lbl = GLOBAL_LABEL_RE.match(line.strip())
+        if m_lbl:
+            local_labels.add(m_lbl.group(1))
+    for line in block_lines:
+        code_only = line.split(";")[0]
+        m_br = BRANCH_TARGET_RE.match(code_only)
+        if m_br:
+            target = m_br.group(1)
+            if target.startswith((".", "@")):
+                continue
+            if target not in local_labels and target not in defined_symbols:
+                return False
+    return True
+
+def main():
+    parser = argparse.ArgumentParser(description="Swap exact-match routines with verbatim upstream ASM blocks")
+    parser.add_argument("--repo", default="sonic_delta_disasm_repo")
+    parser.add_argument("--matches", default="upstream_matches.json")
+    args = parser.parse_args()
+
+    repo = Path(args.repo)
+    report = json.loads(Path(args.matches).read_text(encoding="utf-8"))
+    defined_symbols = load_defined_constants(repo)
+
+    for m in report.get("matches", []):
+        if m.get("kind") != "code" or m.get("match_mode") != "exact":
+            continue
+        repo_tag = m["repo"]
+        raw_sym = m["symbol"]
+        rom_offset = m["rom_offset_int"]
+        module_stem = f"{repo_tag}_{raw_sym}_{rom_offset:06X}"
+        target_asm = repo / "src" / repo_tag / f"{module_stem}.asm"
+        if not target_asm.exists():
+            continue
+        block_lines, src_loc = extract_upstream_routine(repo_tag, raw_sym)
+        if not block_lines or not is_block_self_contained(block_lines, raw_sym, defined_symbols):
+            continue
+        bak_file = target_asm.with_suffix(".asm.ghidra.bak")
+        if not bak_file.exists():
+            bak_file.write_text(target_asm.read_text(encoding="utf-8"), encoding="utf-8")
+        header = [
+            f"; VERBATIM UPSTREAM SOURCE SWAP: {src_loc}",
+            f"{module_stem}:",
+        ]
+        target_asm.write_text("\n".join(header + block_lines) + "\n", encoding="utf-8")
+
+if __name__ == "__main__":
+    main()

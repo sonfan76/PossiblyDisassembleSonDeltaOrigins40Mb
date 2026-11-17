@@ -1,0 +1,32 @@
+#This is for normalizing the videos generated into the same audio format and bringing them together
+#note the remove is commented out, comment it back in if you run this more than once
+#Assumes:
+#You have a ~/Downloads/NTRET/videofy/ directory where your videos are
+#You have a ~/Downloads/NTRET/videofy/ALBUMFULL/ directory to put it all
+#You have a ~/Downloads/NTRET/videofy/ALBUMFULL/list2.txt where the videos are listed in the order that you'd like (supplied in this directory)
+#NOTE: THE REMOVE COMMAND IS COMMENTED OUT BELOW (for safety)
+
+cd ~/Downloads/NTRET/videofy
+mkdir -p norm_clips
+#rm -f norm_clips/list2.txt
+
+while IFS= read -r line; do
+  # Strip "file '" prefix, optional "../", and trailing "'"
+  f=$(echo "$line" | sed "s|^file '||;s|^\.\./||;s|'$||")
+  [ -z "$f" ] && continue
+
+  echo "Normalizing: $f"
+  ffmpeg -nostdin -y -i "$f" \
+    -c:v libx264 -preset fast -crf 19 -pix_fmt yuv420p -r 30 -g 60 \
+    -af "apad,aresample=48000:async=1:first_pts=0" \
+    -c:a aac -b:a 192k -ar 48000 -ac 2 \
+    -shortest \
+    "norm_clips/$f"
+
+  echo "file '$f'" >> norm_clips/list2.txt
+done < ALBUMFULL/list2.txt
+
+# Concatenate the 28 uniform clips cleanly
+ffmpeg -f concat -safe 0 -i norm_clips/list2.txt \
+  -c copy -movflags +faststart \
+  ALBUMFULL/full_album_clean.mp4

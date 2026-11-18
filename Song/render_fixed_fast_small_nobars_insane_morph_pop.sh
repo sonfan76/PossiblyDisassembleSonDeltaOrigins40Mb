@@ -130,6 +130,22 @@ for f in *.mp3; do
     HUE_SHIFT="sin(t*0.28)*25"
   fi
 
+  # Rule 15: Contains _DO_ (Dio 1983 Dungeon Violet & Molten Torch Flame)
+  if [[ "$f" == *_DO_* ]]; then
+    BG="0x16002b"
+    FG="0xff6a00"
+    HUE_SHIFT="sin(t*0.22)*22"
+  fi
+  
+  # Rule 16: Contains _JP86_ (1986 Turbo Synth-Metal & Re-Entry Plasma)
+  if [[ "$f" == *_JP86_* ]]; then
+    BG="0x09001a"
+    FG="0xff2a85"
+    HUE_SHIFT="sin(t*0.35)*40"
+  fi
+
+
+
 
   # Convert hex FG (0xRRGGBB) to RGB decimals (0-255) for avectorscope
   R=$((16#${FG:2:2}))

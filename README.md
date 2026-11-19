@@ -1,5 +1,5 @@
 # PossiblyDisassembleSonDeltaOrigins40Mb
-( https://rumble.com/v7i9vxm-free-the-software-full-2-hour-copyleft-concept-soundtrack-m68k-1983-gnu-eth.html )
+( https://rumble.com/v7ikety-m68k-free-the-software-40-megabit-copyleft-concept-soundtrack-complete-36-t.html )
 
 ( https://archive.org/details/full_album )
 

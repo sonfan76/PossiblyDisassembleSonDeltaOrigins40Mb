@@ -1,0 +1,23 @@
+M68K FREE THE SOFTWARE — ABRIDGED SINGLE-DISC EDITION (CC0 1.0 | COPY PERMITTED)
+
+  01 (Orig #01) [00:00] Unlock the Gate (Opening Manifesto) (02:56) -> 1_Unlock_the_Gate.wav
+  02 (Orig #06) [02:56] ASM For Free (Take 2 - Ice Cube Style) (03:00) -> ASM_For_Free___.wav
+  03 (Orig #09) [05:56] Free the Software (Iron Maiden Style) (05:00) -> B10_IM_Free_the Software.wav
+  04 (Orig #12) [10:56] Hell Patrol for Freedom (Judas Priest Style - Alt) (05:22) -> B16_JP_HP_For_Freedom_.wav
+  05 (Orig #13) [16:18] Free the Software (1970s Fantasy Parchment Edition) (06:24) -> B17_IM_Free_the_Software__.wav
+  06 (Orig #15) [22:43] Free the Software (AX-6 Tupac Style - Alt) (02:50) -> C16___AX_6_FTS_.wav
+  07 (Orig #16) [25:33] M68K Under Blood Red Skies (04:13) -> C20_M68K_under_Blood_Red_Skies.wav
+  08 (Orig #18) [29:46] Copyleft Dawn (Yngwie Malmsteen Style) (04:38) -> C24_YM_Copyleft_Dawn.wav
+  09 (Orig #20) [34:25] DISASSEMBLE (Dethklok Style) (04:40) -> C26_DK_DISASSEMBLE.wav
+  10 (Orig #21) [39:04] DISASSEMBLE (Dethklok Style - Alt) (04:37) -> C27_DK_DISASSEMBLE_.wav
+  11 (Orig #22) [43:42] Break the Vault (Iron Maiden / Parchment Edition) (04:55) -> C28_IM_Break_the_Vault.wav
+  12 (Orig #24) [48:36] Blood Red Skies (Crimson Mix) (04:58) -> xx7_BLOOD_RED_SKIES_1.wav
+  13 (Orig #26) [53:34] Hell Patrol for Copyleft (DragonForce Mix) (04:33) -> xx9_B13_DrgnFrcMtl_HP_FOR_COPYLEFT.wav
+  14 (Orig #28) [58:08] Smooth Disassembler (Michael Jackson Style - Alt) (04:19) -> zz9_E31_MJ_Smooth_Disassembler_2.wav
+  15 (Orig #29) [62:27] Silence (Interlude) (00:05) -> zz9_E33______silence.wav
+  16 (Orig #30) [62:32] When Born in the Dark (Dio Style) (05:10) -> zz9_E35_DO_When_born_in_the_dark_BONUS.wav
+  17 (Orig #33) [67:42] Remember the Fire 1983 (Dio Style - Alt) (07:22) -> zz9_E38_DO_Remember_the_Fire_1983___BONUS.wav
+  18 (Orig #35) [75:04] M68K Dawn (The Software Is Free) (Judas Priest '86) (04:31) -> zz9_E40_JP86_M68K_Dawn__The_Software_Is_Free___BONUS.wav
+
+Total Runtime: 79:35
+Burn with: cdrdao write --device /dev/sr0 --speed 8 --eject Abridged_One_CD.cue

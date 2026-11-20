@@ -1,0 +1,42 @@
+M68K FREE THE SOFTWARE — COMPLETE 2-CD ARCHIVE (148:22, 2 CDs | CC0 1.0 | COPY PERMITTED)
+
+DISC 01 (Tracks 01-19 | 73:29)
+  01 (Orig #01) [00:00] Unlock the Gate (Opening Manifesto) (02:56) -> 1_Unlock_the_Gate.wav
+  02 (Orig #02) [02:56] Free the Source (02:19) -> 2_Free_the_Source_.wav
+  03 (Orig #03) [05:15] Free the Source (M-Style) (02:22) -> 3_Mstyle_Free_the_Source__.wav
+  04 (Orig #04) [07:37] Unlock the Gate (Alt) (02:51) -> 4_Unlock_the_Gate___.wav
+  05 (Orig #05) [10:28] ASM For Free (Take 1) (03:00) -> ASM_For_Free__.wav
+  06 (Orig #06) [13:27] ASM For Free (Take 2 - Ice Cube Style) (03:00) -> ASM_For_Free___.wav
+  07 (Orig #07) [16:27] ASM For Free (Take 3) (03:00) -> ASM_For_Free____.wav
+  08 (Orig #08) [19:27] ASM For Free (Main) (02:59) -> ASM_FOR_FREE.wav
+  09 (Orig #09) [22:26] Free the Software (Iron Maiden Style) (05:00) -> B10_IM_Free_the Software.wav
+  10 (Orig #10) [27:26] Free the Software (Iron Maiden Style - Alt) (05:09) -> B11_IM_Free_the Software_.wav
+  11 (Orig #11) [32:36] Hell Patrol for Freedom (Judas Priest Style) (05:56) -> B15_JP_HP_For_Freedom.wav
+  12 (Orig #12) [38:32] Hell Patrol for Freedom (Judas Priest Style - Alt) (05:22) -> B16_JP_HP_For_Freedom_.wav
+  13 (Orig #13) [43:55] Free the Software (1970s Fantasy Parchment Edition) (06:24) -> B17_IM_Free_the_Software__.wav
+  14 (Orig #14) [50:19] Free the Software (AX-6 Tupac Style) (03:00) -> C15___AX_6_FTS.wav
+  15 (Orig #15) [53:19] Free the Software (AX-6 Tupac Style - Alt) (02:50) -> C16___AX_6_FTS_.wav
+  16 (Orig #16) [56:09] M68K Under Blood Red Skies (04:13) -> C20_M68K_under_Blood_Red_Skies.wav
+  17 (Orig #17) [60:22] M68K Under Blood Red Skies (Alt) (04:19) -> C21_M68K_under_Blood_Red_Skies_.wav
+  18 (Orig #18) [64:41] Copyleft Dawn (Yngwie Malmsteen Style) (04:38) -> C24_YM_Copyleft_Dawn.wav
+  19 (Orig #19) [69:20] Copyleft Dawn (Yngwie Malmsteen Style - Alt) (04:09) -> C25_YM_Copyleft_Dawn_.wav
+
+DISC 02 (Tracks 20-35 | 74:52)
+  01 (Orig #20) [00:00] DISASSEMBLE (Dethklok Style) (04:40) -> C26_DK_DISASSEMBLE.wav
+  02 (Orig #21) [04:40] DISASSEMBLE (Dethklok Style - Alt) (04:37) -> C27_DK_DISASSEMBLE_.wav
+  03 (Orig #22) [09:17] Break the Vault (Iron Maiden / Parchment Edition) (04:55) -> C28_IM_Break_the_Vault.wav
+  04 (Orig #23) [14:12] Break the Vault (Iron Maiden / Parchment Edition - Alt) (04:20) -> C29_IM_Break_the_Vault_.wav
+  05 (Orig #24) [18:32] Blood Red Skies (Crimson Mix) (04:58) -> xx7_BLOOD_RED_SKIES_1.wav
+  06 (Orig #25) [23:30] Hell Patrol for Copyleft (Nu-Metal Mix) (04:15) -> xx9_B12_NuMtl_HP_FOR_COPYLEFT.wav
+  07 (Orig #26) [27:45] Hell Patrol for Copyleft (DragonForce Mix) (04:33) -> xx9_B13_DrgnFrcMtl_HP_FOR_COPYLEFT.wav
+  08 (Orig #27) [32:18] Smooth Disassembler (Michael Jackson Style) (04:25) -> zz9_E30_MJ_Smooth_Disassembler1.wav
+  09 (Orig #28) [36:43] Smooth Disassembler (Michael Jackson Style - Alt) (04:19) -> zz9_E31_MJ_Smooth_Disassembler_2.wav
+  10 (Orig #29) [41:02] Silence (Interlude) (00:05) -> zz9_E33______silence.wav
+  11 (Orig #30) [41:07] When Born in the Dark (Dio Style) [Bonus] (05:10) -> zz9_E35_DO_When_born_in_the_dark_BONUS.wav
+  12 (Orig #31) [46:17] When Born in the Dark (Dio Style - Alt) [Bonus] (04:55) -> zz9_E36_DO_When_born_in_the_dark___BONUS.wav
+  13 (Orig #32) [51:12] Remember the Fire 1983 (Dio Style) [Bonus] (06:59) -> zz9_E37_DO_Remember_the_Fire_1983_BONUS.wav
+  14 (Orig #33) [58:11] Remember the Fire 1983 (Dio Style - Alt) [Bonus] (07:22) -> zz9_E38_DO_Remember_the_Fire_1983___BONUS.wav
+  15 (Orig #34) [65:33] M68K Dawn (The Software Is Free) [Part I] (Judas Priest '86) [Bonus] (04:49) -> zz9_E39_JP86_M68K_Dawn__The_Software_Is_Free_BONUS.wav
+  16 (Orig #35) [70:22] M68K Dawn (The Software Is Free) (Judas Priest '86) [Bonus] (04:31) -> zz9_E40_JP86_M68K_Dawn__The_Software_Is_Free___BONUS.wav
+
+Burn with: cdrdao write --device /dev/sr0 --speed 8 --eject Complete_Disc_01.cue

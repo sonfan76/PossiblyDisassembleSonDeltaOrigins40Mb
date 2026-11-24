@@ -1,3 +1,11 @@
+Note: uses Ghidra:
+(If on linux, for instance, you need jdk, gdb, blastem and ghidra (which for some reason isn't packaged...))
+>apt install -y openjdk-17-jdk
+>apt install -y gdb-multiarch
+>apt install -y blastem
+>wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.0.3_build/ghidra_11.0.3_PUBLIC_20240410.zip
+>sudo unzip ghidra_11.0.3_PUBLIC_20240410.zip -d /opt/
+
 Updated to v3.1. Make sure to do the blastem tracing as noted first.
 
 Running on Sonic_Delta_Origins_2026.bin

@@ -1,15 +1,18 @@
-# ghidra_auto_bank.py (v3 + Runtime Switch Importer)
+# ghidra_auto_bank.py (v3.1 + Runtime Switch Importer + vasm Listing Exporter)
 import os
 import json
 from ghidra.program.model.symbol import SourceType
 from ghidra.program.model.data import ByteDataType, ArrayDataType
+from ghidra.program.model.listing import Instruction
 from ghidra.app.cmd.disassemble import DisassembleCommand
+
 
 def sanitize_symbol(name):
     clean = "".join(c if c.isalnum() else "_" for c in name)
     while "__" in clean:
         clean = clean.replace("__", "_")
     return clean.strip("_")
+
 
 def label_genesis_hardware():
     hw_regs = {
@@ -41,6 +44,7 @@ def label_genesis_hardware():
         except Exception:
             pass
 
+
 def apply_ram_symbols():
     ram_path = "upstream_ram_symbols.json"
     if not os.path.exists(ram_path):
@@ -58,6 +62,7 @@ def apply_ram_symbols():
                 sym_table.createLabel(addr, primary_name, SourceType.USER_DEFINED)
             except Exception:
                 pass
+
 
 def apply_upstream_matches(bank_index):
     matches_path = "upstream_matches.json"
@@ -97,6 +102,7 @@ def apply_upstream_matches(bank_index):
         elif kind == "code":
             DisassembleCommand(target_addr, None, True).applyTo(currentProgram)
 
+
 def apply_neto_hooks(bank_index):
     hooks_path = "neto_custom_hooks.json"
     if not os.path.exists(hooks_path):
@@ -121,6 +127,7 @@ def apply_neto_hooks(bank_index):
         except Exception:
             pass
 
+
 def apply_runtime_switches(bank_index):
     switches_path = "resolved_switches.json"
     if not os.path.exists(switches_path):
@@ -142,12 +149,72 @@ def apply_runtime_switches(bank_index):
         regs = sorted(set(s["register"] for s in sw_list))
         vals = sorted(set(s["value_written"] for s in sw_list))
         lbl = "Runtime_SSF2_{}_{:05X}".format("_".join(regs), local_off)
-        comment = "[RUNTIME TRACE: {} <- {} ({} hits)]".format(",".join(regs), ",".join(vals), sum(s["hit_count"] for s in sw_list))
+        comment = "[RUNTIME TRACE: {} <- {} ({} hits)]".format(
+            ",".join(regs), ",".join(vals), sum(s["hit_count"] for s in sw_list)
+        )
         try:
             sym_table.createLabel(target_addr, lbl, SourceType.USER_DEFINED)
             listing.setComment(target_addr, 0, comment)
         except Exception:
             pass
+
+
+def export_bank_listing(bank_index):
+    if not os.path.exists("disasm_banks"):
+        os.makedirs("disasm_banks")
+
+    out_path = os.path.join("disasm_banks", "raw_bank_{:02d}.asm".format(bank_index))
+    listing = currentProgram.getListing()
+    sym_table = currentProgram.getSymbolTable()
+    base_offset = currentProgram.getImageBase().getOffset()
+    global_bank_base = bank_index * 0x80000
+
+    out_lines = [
+        "; Auto-exported by ghidra_auto_bank.py v3.1 (Bank {:02d} | ROM 0x{:06X})".format(
+            bank_index, global_bank_base
+        ),
+        "    org ${:06X}".format(global_bank_base),
+        "",
+    ]
+
+    cu_iter = listing.getCodeUnits(True)
+    while cu_iter.hasNext() and not monitor.isCancelled():
+        cu = cu_iter.next()
+        addr = cu.getMinAddress()
+        local_off = addr.getOffset() - base_offset
+        if local_off < 0 or local_off >= 0x80000:
+            continue
+
+        for sym in sym_table.getSymbols(addr):
+            s_name = sym.getName()
+            if s_name.startswith("LAB_"):
+                s_name = "loc_{:06X}".format(global_bank_base + local_off)
+            out_lines.append("{}:".format(s_name))
+
+        pre_cmt = cu.getComment(0)
+        cmt_suffix = " ; {}".format(pre_cmt.replace("\n", " ")) if pre_cmt else ""
+
+        raw_bytes = cu.getBytes()
+        hex_cols = " ".join("{:02X}".format(b & 0xFF) for b in raw_bytes[:8])
+        addr_str = "{:08X}".format(global_bank_base + local_off)
+
+        if isinstance(cu, Instruction):
+            inst_str = cu.toString()
+            out_lines.append("{} {}    {}{}".format(addr_str, hex_cols, inst_str, cmt_suffix))
+        else:
+            total_len = len(raw_bytes)
+            for chunk_start in range(0, total_len, 16):
+                chunk = raw_bytes[chunk_start : chunk_start + 16]
+                chunk_addr = "{:08X}".format(global_bank_base + local_off + chunk_start)
+                chunk_hex = " ".join("{:02X}".format(b & 0xFF) for b in chunk[:8])
+                dc_vals = ",".join("${:02X}".format(b & 0xFF) for b in chunk)
+                line_cmt = cmt_suffix if chunk_start == 0 else ""
+                out_lines.append("{} {}    dc.b {}{}".format(chunk_addr, chunk_hex, dc_vals, line_cmt))
+
+    with open(out_path, "w") as f:
+        f.write("\n".join(out_lines) + "\n")
+    print("[+] Exported {} ({} lines)".format(out_path, len(out_lines)))
+
 
 def run():
     prog_name = currentProgram.getName()
@@ -156,10 +223,23 @@ def run():
         if part.isdigit():
             bank_index = int(part)
             break
+
+    if bank_index == 0:
+        space = currentProgram.getAddressFactory().getDefaultAddressSpace()
+        mem = currentProgram.getMemory()
+        try:
+            entry_pc = mem.getInt(space.getAddress(0x000004)) & 0x00FFFFFF
+            if 0 < entry_pc < 0x80000:
+                DisassembleCommand(space.getAddress(entry_pc), None, True).applyTo(currentProgram)
+        except Exception:
+            pass
+
     label_genesis_hardware()
     apply_ram_symbols()
     apply_upstream_matches(bank_index)
     apply_neto_hooks(bank_index)
     apply_runtime_switches(bank_index)
+    export_bank_listing(bank_index)
+
 
 run()

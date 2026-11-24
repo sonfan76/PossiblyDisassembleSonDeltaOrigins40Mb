@@ -1,4 +1,9 @@
 NOTE: the v3.1 toolkit is more encompassing, it's in the directory below (and also as a zip file)
+Note: uses Ghidra:
+(If on linux, for instance, you need jdk, gdb, blastem and ghidra (which for some reason isn't packaged...))
+>apt install -y openjdk-17-jdk gdb-multiarch blastem
+>wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.0.3_build/ghidra_11.0.3_PUBLIC_20240410.zip
+>sudo unzip ghidra_11.0.3_PUBLIC_20240410.zip -d /opt/
 # Sonic Delta 40Mbit (SSF2 Mapper) M68K Dynamic Analysis & Rebuild Toolkit (v2)
 
 This toolkit is specifically tuned for **40Mbit (5MB) Sega Genesis / Mega Drive ROMs using the standard Sega SSF2 mapper (`$A130F3`–`$A130FF`)**, filtering out SRAM toggles on `$A130F1` and removing unused `$220000` watchpoints.

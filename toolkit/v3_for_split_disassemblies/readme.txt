@@ -1,3 +1,5 @@
+Updated to v3.1. Make sure to do the blastem tracing as noted first.
+
 Running on Sonic_Delta_Origins_2026.bin
 
 Make sure Sonic_Delta_Origins_2026.bin, s1disasm-AS/, s2disasm-master/, and skdisasm-master/ are in that directory.

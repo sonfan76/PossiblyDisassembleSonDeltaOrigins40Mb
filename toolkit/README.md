@@ -1,8 +1,8 @@
 NOTE: the v3.1 toolkit is more encompassing, it's in the directory below (and also as a zip file)
 Note: uses Ghidra:
 (If on linux, for instance, you need jdk, gdb, blastem and ghidra (which for some reason isn't packaged...))
->apt install -y openjdk-17-jdk gdb-multiarch blastem
->wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.0.3_build/ghidra_11.0.3_PUBLIC_20240410.zip
+>apt install -y openjdk-17-jdk gdb-multiarch blastem ;
+>wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_11.0.3_build/ghidra_11.0.3_PUBLIC_20240410.zip ;
 >sudo unzip ghidra_11.0.3_PUBLIC_20240410.zip -d /opt/
 # Sonic Delta 40Mbit (SSF2 Mapper) M68K Dynamic Analysis & Rebuild Toolkit (v2)
 

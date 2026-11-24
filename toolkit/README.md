@@ -1,3 +1,4 @@
+NOTE: the v3.1 toolkit is more encompassing, it's in the directory below (and also as a zip file)
 # Sonic Delta 40Mbit (SSF2 Mapper) M68K Dynamic Analysis & Rebuild Toolkit (v2)
 
 This toolkit is specifically tuned for **40Mbit (5MB) Sega Genesis / Mega Drive ROMs using the standard Sega SSF2 mapper (`$A130F3`–`$A130FF`)**, filtering out SRAM toggles on `$A130F1` and removing unused `$220000` watchpoints.

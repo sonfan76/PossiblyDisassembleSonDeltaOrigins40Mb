@@ -1,4 +1,6 @@
 # PossiblyDisassembleSonDeltaOrigins40Mb
+Directories: /toolkit/v3_for_split_disassemblies
+/main/toolkit/zips_and_previous/sontools_v3_1.zip
 ( https://rumble.com/v7ikety-m68k-free-the-software-40-megabit-copyleft-concept-soundtrack-complete-36-t.html )
 
 ( https://archive.org/details/full_album )

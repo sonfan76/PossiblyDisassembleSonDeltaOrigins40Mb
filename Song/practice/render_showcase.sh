@@ -25,7 +25,8 @@ Arguments:
   <mastered_audio.mp3>      Mastered audio file (.mp3, .wav, .flac)
   ["Banner Title"]          Optional top-left title (defaults to audio filename)
   [theme|hex_colors]        Optional waveform color theme or FFmpeg hex pair:
-                              amber   - Rising Force gold/crimson (default)
+                              silver  - Crisp translucent white/slate (default, blends with any room)
+                              amber   - Rising Force gold/crimson
                               genesis - Thunder Force IV M68K cyan/blue
                               priest  - JP86 steel-silver/electric-blue
                               doom    - Sabbath/Kyuss deep violet/magenta
@@ -49,9 +50,10 @@ AUD="$2"
 BASE=$(basename "${AUD%.*}")
 RAW_TITLE="${3:-$BASE}"
 TITLE=$(printf '%s' "$RAW_TITLE" | sed "s/'/\\\\'/g; s/:/\\\\:/g")
-THEME="${4:-amber}"
+THEME="${4:-silver}"
 
 case "$THEME" in
+  silver)  COLORS="0xffffff@0.75|0x8899aa@0.65" ;;
   amber)   COLORS="0xffaa00@0.85|0xff3300@0.85" ;;
   genesis) COLORS="0x00ffff@0.85|0x0055ff@0.85" ;;
   priest)  COLORS="0xddeeff@0.85|0x2277ff@0.85" ;;

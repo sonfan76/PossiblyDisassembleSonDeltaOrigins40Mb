@@ -13,34 +13,45 @@ live on Devuan GNU/Linux.
 - License:     CC0 1.0 Universal (Public Domain Dedication)
 
 
-2. INCLUDED AUDIO MASTERS (4 MP3 RENDER VARIATIONS)
----------------------------------------------------
-All four 320 kbps / 44.1 kHz MP3 masters were generated from the November 26,
-2026 practice session using different presets in the mastering suite:
+2. INCLUDED AUDIO FILES (ROOM-CORRECTED BASELINE + 4 GENRE PRESET MASTERS)
+--------------------------------------------------------------------------
+All 320 kbps / 44.1 kHz MP3 files come from the November 26, 2026 practice
+session. Because the baseline (_final) recording already had room-acoustics
+cleanup applied beforehand, the four preset renders demonstrate pure tonal
+and stylistic mastering variations on top of a clean, room-corrected mix:
 
-- ..._unpolished_studio.mp3 (or ..._alreadypolished_studio.mp3)
-  Clean studio master preserving the raw DOD 250 + scalloped neck dynamics,
-  tight low-end control, stereo widening, and smooth fade-in/fade-out.
+- ..._original_unmastered.mp3 (or ..._baseline.mp3)
+  320 kbps audio extraction of the room-corrected _final recording prior to
+  applying genre/era mastering presets (included for A/B comparison).
+
+- ..._ballad_studio.mp3 (-L / --ballad)
+  Clean-to-heavy dynamic power ballad warmth with wide stereo hall reverb.
 
 - ..._jp86_studio.mp3 (-j / --jp86)
-  1986 Judas Priest neoclassical power-metal brightness (3.8 kHz & 6.5 kHz
-  harmonic lift) with wide dual-lead stereo shimmer.
+  1986 Judas Priest neoclassical power-metal brightness & dual-lead shimmer.
 
 - ..._ym1_studio.mp3 (-y / --ym1)
-  1984 Yngwie Malmsteen "Rising Force" bell-like DOD 250 + Strat glassy clarity
-  (105 Hz tight low cut, 4.2 kHz & 7.0 kHz upper-mid snap for bare-handed runs).
+  1984 Yngwie Malmsteen "Rising Force" bell-like DOD 250 + Strat glassy clarity.
 
 - ..._thunderforce_studio.mp3 (-4 / --thunderforce)
-  1992 Sega Genesis / Mega Drive "Thunder Force IV (Lightening Force)" M68K +
-  YM2612 FM-synth shred tone with 12-bit DAC quantization crunch and tanh clip.
+  1992 Sega Genesis "Thunder Force IV" M68K + YM2612 FM-synth shred grit.
 
 
 3. INCLUDED MASTERING SCRIPTS (58 PRESETS)
 ------------------------------------------
-Three standalone command-line FFmpeg mastering & conversion scripts are included
-in this directory. Every script supports any-to-any conversion (.mp4, .mkv,
-.wav, .flac, .mp3 -> .mp3, .wav, .flac, or stream-copied .mp4), start/end
-trimming, custom ID3 tags, and 58 room, retro console, metal, and DJ presets:
+NOTE ON RAW RECORDINGS:
+- Single-Pass (Standard): These scripts do NOT require a pre-cleaned file.
+  Every preset already includes its own high-pass rumble filter (75-105 Hz),
+  boxy-midrange cleanup (240-360 Hz cut), compression, and peak limiter, so
+  you can run any preset directly on a brand-new raw laptop-mic take.
+- Two-Step Tip (Extra-Boomy / Echoey Rooms): If a future room recording is
+  unusually boomy or echoey, run --boomy (-b) or --echoey (-e) first to
+  create a clean baseline, then run your genre preset (-4, -y, -j, -L) on
+  that cleaned output.
+- Already-EQ'd Files: Use -p / --alreadypolished when you want a clean
+  studio master without applying a second pass of room-mud EQ.
+
+Three standalone command-line FFmpeg mastering & conversion scripts are included:
 
 - studio_master.pl   (CC0 Public Domain Perl 5 — zero CPAN dependencies,
                       supports --batch folder mode and --norm -14 LUFS)
@@ -60,9 +71,11 @@ Master a raw webcam MP4 -> 320 kbps MP3 (default --unpolished cleanup):
 Master an already-EQ'd file without double-EQing (-p):
   ./studio_master.pl -p practice_final.mp4 "Clean Studio Master"
 
-Render with Thunder Force IV (-4) or Rising Force (-y) preset:
-  ./studio_master.pl -4 practice_final.mp4 "Thunder Force IV"
+Render with Ballad (-L), JP86 (-j), Rising Force (-y), or Thunder Force (-4):
+  ./studio_master.pl -L practice_final.mp4 "Ballad"
+  ./studio_master.pl -j practice_final.mp4 "JP86"
   ./studio_master.pl -y practice_final.mp4 "Rising Force"
+  ./studio_master.pl -4 practice_final.mp4 "Thunder Force IV"
 
 Re-master an existing MP3 for Numark CDJ / club speakers (--cdj):
   ./studio_master.pl --cdj existing_track.mp3 "Club Master"
@@ -76,3 +89,4 @@ Batch-process a folder with uniform -14 LUFS volume leveling:
 To the extent possible under law, all audio recordings, presets, and scripts
 in this directory are dedicated to the public domain worldwide under CC0 1.0:
 <http://creativecommons.org>
+

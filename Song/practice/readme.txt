@@ -90,3 +90,18 @@ To the extent possible under law, all audio recordings, presets, and scripts
 in this directory are dedicated to the public domain worldwide under CC0 1.0:
 <http://creativecommons.org>
 
+================================================================================
+SESSION LOG: ROLAND BOUTIQUE JX-03 CATHEDRAL SYNTH ORGAN (NOV 27, 2026)
+================================================================================
+Rig & Wet/Dry Stereo Routing:
+- Synth: Roland Boutique JX-03 + K-25m 25-key keyboard
+- Effect: Custom 3-knob DIY reverb/delay pedal (top output -> right amp,
+  side output -> left amp for wet/dry stereo split)
+- Amps: Dual Blackstar Fly 3 (Union Jack stereo setup)
+- Mastering & Video: studio_master.sh (default studio preset, -p / --alreadypolished)
+  + render_showcase.sh (doom & silver waveform themes, VA-API hardware encode)
+
+Published Audio & Video (CC0 Public Domain):
+- Part I Audio: roland_jx03_one_dark_cathedral_swells_studio_mastered.mp3
+- Part II Audio: roland_jx03_two_neoclassical_organ_lines_studio_mastered.mp3
+
